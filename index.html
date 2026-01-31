@@ -2,7 +2,7 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <title>⚡ SNIPER V11.8.2 | GOLD-SNIPE EDITION</title>
+    <title>⚡ SNIPER V11.8.3 | GOLD-SNIPE LOG-FIXED</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;800&display=swap');
@@ -30,7 +30,7 @@
 
     <header class="p-4 border-b border-yellow-900 bg-black flex justify-between items-center shrink-0">
         <div class="flex items-center gap-4">
-            <h1 class="text-2xl font-black text-yellow-500 italic">⚡ SNIPER V11.8.2</h1>
+            <h1 class="text-2xl font-black text-yellow-500 italic">⚡ SNIPER V11.8.3</h1>
             <div class="flex gap-2 bg-zinc-900 p-1 rounded border border-zinc-700">
                 <input id="searchInput" type="text" placeholder="搜尋幣名" class="bg-transparent text-xs px-2 focus:outline-none w-24 text-white">
                 <button onclick="manualAdd()" class="bg-yellow-600 text-black px-2 py-1 font-bold rounded">ADD</button>
@@ -76,7 +76,7 @@
         </main>
         <aside class="w-72 border-l border-yellow-900 bg-zinc-950 flex flex-col shrink-0">
             <div class="p-3 border-b border-zinc-800 text-red-500 font-bold flex justify-between uppercase">
-                <span>戰鬥日誌 (CROSS-LOGIC)</span>
+                <span>強勢日誌 (HUNT/GOLD)</span>
                 <span id="timerDisplay" class="text-zinc-600">OFFLINE</span>
             </div>
             <div id="logContainer" class="flex-1 overflow-y-auto p-2 space-y-1"></div>
@@ -142,104 +142,54 @@
             const premiums = await pRes.json();
             const premiumMap = Object.fromEntries(premiums.map(p => [p.symbol, p]));
 
-            const now = new Date();
-            if (now.getMinutes() % 5 === 0 && now.getMinutes() !== lastSnapMin) {
-                lastSnapMin = now.getMinutes();
-                tickers.forEach(t => { priceSnapshots[t.symbol] = parseFloat(t.lastPrice); });
-                document.getElementById('klineStatus').innerText = `${now.getHours()}:${now.getMinutes()} 5M對齊`;
-            }
-
             tickers.forEach(t => {
                 const s = t.symbol;
                 if (!s.endsWith('USDT') || CONFIG.EXCLUDE.includes(s)) return;
 
                 const price = parseFloat(t.lastPrice);
                 const avgPrice = parseFloat(t.weightedAvgPrice); 
-                const fund = parseFloat(premiumMap[s]?.lastFundingRate || 0);
                 const vol = parseFloat(t.quoteVolume);
                 const high = parseFloat(t.highPrice);
                 const low = parseFloat(t.lowPrice);
                 
-                // --- [REF-VWAP] 引力邏輯 ---
-                const vwapGap = (price - avgPrice) / avgPrice;
-
-                // --- 方案 C：M25 趨勢位模擬 ---
-                const mid24h = (high + low) / 2;
-                const m25 = (mid24h * 0.7) + (avgPrice * 0.3);
-
-                const oldPrice = priceSnapshots[s] || price;
-                const v5m = (price - oldPrice) / oldPrice;
-                const isVolatile = v5m >= 0.05; 
-
-                if (!m7History[s]) m7History[s] = [];
-                m7History[s].push(avgPrice);
-                if (m7History[s].length > 10) m7History[s].shift();
-
-                const m7Slope = m7History[s].length > 1 ? avgPrice > m7History[s][0] : false;
-                const m7Distance = (price - avgPrice) / avgPrice;
-                
-                const passStage1 = price > (avgPrice * 1.002); 
-                const passStage2 = m7Slope;
-                const passStage3 = m7Distance < 0.08; 
-
-                if (!signalCount[s]) signalCount[s] = 0;
-                if (passStage1 && passStage2 && passStage3) {
-                    signalCount[s]++;
-                } else {
-                    signalCount[s] = 0;
-                }
-                const isAboveM7Filtered = signalCount[s] >= 3;
-
-                if (!coinHistory[s]) coinHistory[s] = [];
-                coinHistory[s].push(fund);
-                if (coinHistory[s].length > 30) coinHistory[s].shift();
+                // 價格精度適應
+                const priceDecimals = t.lastPrice.split('.')[1]?.length || 2;
 
                 const maSqz = (high - low) / avgPrice;
                 const drvScore = Math.min(100, (Math.abs(parseFloat(t.priceChangePercent)) / (vol / 1e8)) * 15);
-                const slope = coinHistory[s].length >= 30 ? (fund - coinHistory[s][0]) / Math.abs(coinHistory[s][0]) : 0;
+                
+                // --- [SL-MIN] 修正邏輯：確保止損低於現價 ---
+                let slMin = Math.min(price * 0.997, Math.max(avgPrice, low));
+                let tpPot = price * (1 + Math.max(0.01, maSqz * 1.5));
+                let riskAmount = price - slMin;
+                let rrRatio = riskAmount > 0.00000001 ? (tpPot - price) / riskAmount : 0;
 
-                const isTight = Math.abs(price - avgPrice) / avgPrice < 0.003;
-                const isAboveM99 = parseFloat(t.priceChangePercent) > 0;
-                const isPocOk = Math.abs(parseFloat(t.priceChangePercent)) / 100 >= FILTER.POC;
+                // --- 狀態判定 ---
+                const oldPrice = priceSnapshots[s] || price;
+                const v5m = (price - oldPrice) / oldPrice;
+                const isVolatile = v5m >= 0.05;
 
-                // --- [CROSS-LOGIC] 止損與盈虧比計算 ---
-                let slMin = Math.max(avgPrice, low); // [SL-MIN] 結構止損位
-                let tpPot = price * (1 + (maSqz * 1.5)); // [TP-POT] 潛在獲利位
-                let rrRatio = (tpPot - price) / (price - slMin || 0.0001);
+                let score = 0;
+                if (isVolatile) score += 50;
+                if (maSqz < 0.008) {
+                    score += (maSqz <= FILTER.SQZ) ? 25 : 0;
+                    score += (Math.abs(parseFloat(t.priceChangePercent))/100 >= FILTER.POC) ? 25 : 0;
+                    score += (drvScore >= FILTER.DRV) ? 35 : 0;
+                } else {
+                    score += (drvScore >= FILTER.DRV) ? 25 : 0;
+                }
 
+                let tslMode = (drvScore > 90 || rrRatio > 3) ? "M7_TIGHT" : "M25_SAFE";
+                
                 let patterns = [];
                 if (maSqz < 0.006) patterns.push("🌀彈簧吸籌");
                 if (drvScore > 95) patterns.push("🚀真空噴發");
-                if (isVolatile && vol > 1e7) patterns.push("🔥妖幣放量");
-                if (rrRatio > 2.5 && vwapGap < 0.008) patterns.push("💎GOLD_SNIPE");
+                if (rrRatio > 2.5) patterns.push("💎GOLD_SNIPE");
 
-                // --- 方案 C：動態止盈損切換 ---
-                let tsl, tslMode;
-                if (drvScore > 90 || rrRatio > 3) {
-                    tsl = avgPrice * 0.998; // [SL-TIGHT]
-                    tslMode = "M7_TIGHT";
-                } else {
-                    tsl = m25 * 0.992; // [SL-SAFE]
-                    tslMode = "M25_SAFE";
-                }
-                let ttp = tpPot;
+                stats[s] = { s, price, priceDecimals, maSqz, drvScore, score, patterns, tpPot, slMin, tslMode, rrRatio, vwapGap: (price-avgPrice)/avgPrice, isVolatile, v5m, fund: parseFloat(premiumMap[s]?.lastFundingRate || 0) };
 
-                let score = 0;
-                if (isVolatile) score += 50; 
-                if (maSqz < 0.008) { 
-                    score += (maSqz <= FILTER.SQZ) ? 25 : 0;
-                    score += (isPocOk) ? 25 : 0;
-                    score += (drvScore >= FILTER.DRV) ? 35 : 0;
-                } else {
-                    score += (slope <= FILTER.SLP) ? 35 : 0;
-                    score += (drvScore >= FILTER.DRV) ? 25 : 0;
-                    score += (isAboveM7Filtered && isAboveM99) ? 15 : 0;
-                }
-                if (rrRatio > 2) score += 10; // 風暴比加分
-
-                stats[s] = { s, price, fund, maSqz, drvScore, slope, isAboveM7: isAboveM7Filtered, isAboveM99, isTight, isPocOk, isVolatile, v5m, score, patterns, ttp, tsl, tslMode, rrRatio, vwapGap };
-
-                if ((score >= 90 || rrRatio > 3) && (!lastPushTime[s] || Date.now() - lastPushTime[s] > CONFIG.COOLDOWN)) {
+                // --- 修正戰鬥日誌：只記錄紅色等級 (Score >= 90 / Spike / Gold) ---
+                if ((score >= 90 || isVolatile || rrRatio > 2.5) && (!lastPushTime[s] || Date.now() - lastPushTime[s] > CONFIG.COOLDOWN)) {
                     lastPushTime[s] = Date.now();
                     addLog(s, v5m, score, rrRatio > 2.5 ? 3 : (isVolatile ? 2 : 1));
                 }
@@ -265,8 +215,6 @@
                     <div class="flex justify-between items-start mb-1">
                         <div class="flex gap-1 flex-wrap max-w-[70%]">
                             <span class="px-1 rounded ${x.rrRatio > 2.5 ? 'tag-gold' : 'hidden'}">RR:${x.rrRatio.toFixed(1)}</span>
-                            <span class="px-1 rounded ${x.isAboveM7 ? 'tag-active' : 'bg-zinc-800 text-zinc-500'}">M7_VLD</span>
-                            <span class="px-1 rounded ${x.isTight ? 'tag-tight' : 'bg-zinc-800 text-zinc-500'}">TIGHT</span>
                             ${x.patterns.map(p => `<span class="tag-pattern">${p}</span>`).join('')}
                         </div>
                         <span class="text-xs font-black text-yellow-500">SCORE: ${x.score.toFixed(0)}</span>
@@ -278,7 +226,7 @@
                         </div>
                         <div class="text-right">
                             <div class="text-red-500 font-bold">${(x.fund*100).toFixed(4)}%</div>
-                            <div class="text-[9px] text-zinc-500">$${x.price.toFixed(4)}</div>
+                            <div class="text-[9px] text-zinc-500">$${x.price.toFixed(x.priceDecimals)}</div>
                         </div>
                     </div>
                     <div class="grid grid-cols-2 gap-1 mt-2 mb-2 text-[8px] font-bold text-zinc-400">
@@ -286,16 +234,11 @@
                         <div class="bg-black p-1 border border-zinc-800 text-right text-blue-400">DRV: ${x.drvScore.toFixed(0)}</div>
                     </div>
                     <div class="flex justify-between items-center border-t border-zinc-900 pt-1">
-                        <div class="flex gap-2 text-[8px] font-black uppercase">
-                            <span class="${x.slope <= FILTER.SLP ?'text-green-500':'text-zinc-700'}">SLP</span>
-                            <span class="${x.maSqz <= FILTER.SQZ ?'text-green-500':'text-zinc-700'}">SQZ</span>
-                            <span class="${x.isPocOk ? 'text-green-500':'text-zinc-700'}">POC</span>
-                        </div>
                         <div class="px-1 rounded text-[7px] ${x.tslMode === 'M7_TIGHT' ? 'bg-red-900 text-red-200' : 'bg-zinc-800 text-zinc-400'}">${x.tslMode}</div>
                     </div>
                     <div class="tsl-box">
-                        <span>SL_MIN: $${x.tsl.toFixed(4)}</span>
-                        <span class="text-green-700">TP_MAX: $${x.ttp.toFixed(4)}</span>
+                        <span class="text-red-400">SL: $${x.slMin.toFixed(x.priceDecimals)}</span>
+                        <span class="text-green-500">TP: $${x.tpPot.toFixed(x.priceDecimals)}</span>
                     </div>
                 </div>
             `;
@@ -310,9 +253,10 @@
         if (lvl === 3) { color = 'border-yellow-500'; label = '💎 GOLD'; }
         else if (lvl === 2) { color = 'border-purple-600'; label = '⚡ SPIKE'; }
         
-        entry.className = `p-2 bg-zinc-900 border-l-4 ${color} text-[9px] mb-1`;
-        entry.innerHTML = `<b>${label} ${s}</b> 5M:+${(v5m*100).toFixed(2)}% SCORE:${score.toFixed(0)} <span class="float-right text-zinc-600">${new Date().toLocaleTimeString()}</span>`;
+        entry.className = `p-2 bg-zinc-900 border-l-4 ${color} text-[9px] mb-1 animate-pulse`;
+        entry.innerHTML = `<b>${label} ${s}</b> 5M:+${(v5m*100).toFixed(2)}% <span class="float-right text-zinc-600">${new Date().toLocaleTimeString()}</span>`;
         container.prepend(entry);
+        if (container.children.length > 30) container.lastChild.remove();
     }
 
     function toggleSystem() { isRunning = !isRunning; document.getElementById('sysBtn').innerText = isRunning ? "STOP RADAR" : "START RADAR"; if(isRunning) scan(); }

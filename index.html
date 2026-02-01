@@ -2,165 +2,225 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <title>⚡ SNIPER V11.9.6 | 專業看盤儀表板</title>
+    <title>⚡ SNIPER V12.0 | HYBRID 終極版</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;800&display=swap');
         body { background: #050505; color: #FFD700; font-family: 'JetBrains Mono', monospace; overflow: hidden; }
-        .card { background: #0a0a0a; border: 1px solid #1a1a1a; transition: 0.3s; cursor: crosshair; }
-        .gold-card { border: 2px solid #FFD700; background: #1a1a00 !important; box-shadow: 0 0 15px rgba(255, 215, 0, 0.3); }
-        .hunt-card { border: 2px solid #ff4444; background: #1a0000 !important; }
+        .card { background: #0a0a0a; border: 1px solid #1a1a1a; transition: 0.3s; position: relative; cursor: pointer; }
+        .hunt-card { border: 2px solid #ff0000; background: #1a0000 !important; box-shadow: 0 0 15px rgba(255, 0, 0, 0.4); }
+        .gold-card { border: 2px solid #FFD700; background: #1a1a00 !important; box-shadow: 0 0 20px rgba(255, 215, 0, 0.3); }
         .pinned { border: 2px solid #3b82f6 !important; background: #081221 !important; }
-        .tag { padding: 1px 4px; border-radius: 2px; font-size: 8px; font-weight: bold; }
-        .tag-vld { background: #22c55e; color: #000; }
-        .tag-alert { background: #ef4444; color: #fff; }
-        @keyframes flash { 0%, 100% { opacity: 1; } 50% { opacity: 0.6; } }
-        .animate-flash { animation: flash 1s infinite; }
+        @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.7; } }
+        .animate-hunt { animation: blink 0.8s infinite; }
+        input[type=range] { accent-color: #FFD700; }
+        .btn-preset { background: #111; border: 1px solid #333; padding: 2px 8px; border-radius: 4px; font-size: 9px; }
+        .tag { font-[8px] px-1 rounded font-bold; }
     </style>
 </head>
 <body class="h-screen flex flex-col text-[10px]">
 
     <header class="p-4 border-b border-yellow-900 bg-black flex justify-between items-center shrink-0">
         <div class="flex items-center gap-4">
-            <h1 class="text-2xl font-black text-yellow-500 italic">⚡ SNIPER V11.9.6 <span class="text-[10px] text-zinc-500 not-italic ml-2">MONITOR ONLY</span></h1>
-            <div id="dayStatus" class="bg-zinc-900 px-3 py-1 rounded border border-yellow-700 text-yellow-500 font-bold">檢測日期中...</div>
+            <h1 class="text-2xl font-black text-yellow-500 italic">⚡ SNIPER V12.0</h1>
+            <div class="flex gap-2">
+                <button onclick="applyPreset('Ambush')" class="btn-preset text-blue-400 border-blue-900">🌀 週末埋伏</button>
+                <button onclick="applyPreset('HighWin')" class="btn-preset text-yellow-400 border-yellow-700">🎯 高勝率模式</button>
+                <button onclick="applyPreset('Hunter')" class="btn-preset text-red-400 border-red-900">🔥 極速獵殺</button>
+            </div>
         </div>
         <div class="flex gap-4">
-            <div id="klineStatus" class="text-zinc-500 italic flex items-center">等待 5M 對齊...</div>
-            <button id="sysBtn" onclick="toggleSystem()" class="bg-yellow-600 text-black px-8 py-1 rounded font-black text-xs hover:bg-yellow-500">START MONITOR</button>
+            <div id="klineStatus" class="bg-zinc-800 px-3 py-1 rounded text-white italic text-[8px]">等待信號同步...</div>
+            <button id="sysBtn" onclick="toggleSystem()" class="bg-blue-600 text-white px-8 py-1 rounded font-black text-xs">START RADAR</button>
         </div>
     </header>
 
-    <div class="flex-1 flex overflow-hidden">
+    <div class="bg-zinc-900/80 p-3 border-b border-yellow-900/30 grid grid-cols-5 gap-4">
+        <div class="space-y-1">
+            <div class="flex justify-between text-yellow-500 text-[8px]"><span>🌀 SQZ (蓄勢)</span><span id="v_sqz">1.2%</span></div>
+            <input type="range" id="i_sqz" min="5" max="50" value="12" class="w-full">
+        </div>
+        <div class="space-y-1">
+            <div class="flex justify-between text-green-400 text-[8px]"><span>🎯 POC (漲幅)</span><span id="v_poc">1.1%</span></div>
+            <input type="range" id="i_poc" min="1" max="100" value="11" class="w-full">
+        </div>
+        <div class="space-y-1">
+            <div class="flex justify-between text-red-500 text-[8px]"><span>🚨 GAP (乖離限制)</span><span id="v_slp">1.5%</span></div>
+            <input type="range" id="i_slp" min="5" max="50" value="15" class="w-full">
+        </div>
+        <div class="space-y-1">
+            <div class="flex justify-between text-blue-400 text-[8px]"><span>🚀 DRV (真空)</span><span id="v_drv">90</span></div>
+            <input type="range" id="i_drv" min="10" max="150" value="90" class="w-full">
+        </div>
+        <div class="space-y-1">
+            <div class="flex justify-between text-orange-500 text-[8px]"><span>⚡ MOM (5M動能)</span><span id="v_mom">0.8%</span></div>
+            <input type="range" id="i_mom" min="1" max="50" value="8" class="w-full">
+        </div>
+    </div>
+
+    <div class="flex flex-1 overflow-hidden">
         <main class="flex-1 p-3 overflow-y-auto bg-black">
             <div id="dashboard" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3"></div>
         </main>
-
-        <aside class="w-72 border-l border-yellow-900/30 bg-zinc-950 flex flex-col">
-            <div class="p-3 border-b border-zinc-800 text-yellow-500 font-bold uppercase">機會偵測日誌</div>
+        <aside class="w-72 border-l border-yellow-900 bg-zinc-950 flex flex-col">
+            <div class="p-3 border-b border-zinc-800 text-red-500 font-bold">混合獵殺日誌 (M25 核心)</div>
             <div id="logContainer" class="flex-1 overflow-y-auto p-2 space-y-2"></div>
         </aside>
     </div>
 
 <script>
+    const CONFIG = { EXCLUDE: ['BTCUSDT','ETHUSDT','SOLUSDT','BNBUSDT'], COOLDOWN: 180000 };
     let stats = {}, pinned = new Set(), isRunning = false;
-    let priceSnapshots = {}, lastSnapMin = -1;
-    let m7History = {}, signalCount = {};
-    let lastLogTime = {}; // 防止日誌洗板
+    let priceSnapshots = {}, lastPushTime = {}, lastSnapMin = -1;
+    let signalCount = {}; // V11.8 核心濾網
+    let FILTER = { SQZ: 0.012, POC: 0.011, SLP: 0.015, DRV: 90, MOM: 0.008 };
 
-    function getTradeContext() {
-        const now = new Date();
-        const day = now.getDay(); 
-        if (day === 6) return { name: "📅 週六 (週末埋伏模式)", bonus: "SQZ" };
-        if (day === 1) return { name: "📅 週一 (動量噴發模式)", bonus: "MOM" };
-        return { name: "📅 常規掃描模式", bonus: "NONE" };
+    function applyPreset(mode) {
+        const presets = {
+            'Ambush': { sqz: 8, poc: 5, slp: 12, drv: 110, mom: 5 }, 
+            'HighWin': { sqz: 12, poc: 11, slp: 15, drv: 90, mom: 8 }, 
+            'Hunter': { sqz: 18, poc: 22, slp: 30, drv: 55, mom: 25 } 
+        };
+        const p = presets[mode];
+        document.getElementById('i_sqz').value = p.sqz;
+        document.getElementById('i_poc').value = p.poc;
+        document.getElementById('i_slp').value = p.slp;
+        document.getElementById('i_drv').value = p.drv;
+        document.getElementById('i_mom').value = p.mom;
+        ['i_sqz','i_poc','i_slp','i_drv','i_mom'].forEach(id => document.getElementById(id).dispatchEvent(new Event('input')));
     }
+
+    const setupSliders = () => {
+        const binds = [
+            {id:'i_sqz', vid:'v_sqz', key:'SQZ', div:1000, suffix:'%'},
+            {id:'i_poc', vid:'v_poc', key:'POC', div:1000, suffix:'%'},
+            {id:'i_slp', vid:'v_slp', key:'SLP', div:1000, suffix:'%'},
+            {id:'i_drv', vid:'v_drv', key:'DRV', div:1},
+            {id:'i_mom', vid:'v_mom', key:'MOM', div:1000, suffix:'%'}
+        ];
+        binds.forEach(b => {
+            document.getElementById(b.id).oninput = (e) => {
+                let v = parseFloat(e.target.value);
+                FILTER[b.key] = v / b.div;
+                document.getElementById(b.vid).innerText = (v / (b.div === 1 ? 1 : 10)).toFixed(1) + (b.suffix || '');
+                if (isRunning) render();
+            };
+        });
+    };
 
     async function scan() {
         if(!isRunning) return;
-        const ctx = getTradeContext();
-        document.getElementById('dayStatus').innerText = ctx.name;
-
         try {
-            const res = await fetch('https://fapi.binance.com/fapi/v1/ticker/24hr');
-            const tickers = await res.json();
+            const [tRes, pRes] = await Promise.all([fetch('https://fapi.binance.com/fapi/v1/ticker/24hr'), fetch('https://fapi.binance.com/fapi/v1/premiumIndex')]);
+            const tickers = await tRes.json();
             const now = new Date();
 
-            // 每 5 分鐘對齊一次價格快照，用來算動量
             if (now.getMinutes() % 5 === 0 && now.getMinutes() !== lastSnapMin) {
                 lastSnapMin = now.getMinutes();
                 tickers.forEach(t => priceSnapshots[t.symbol] = parseFloat(t.lastPrice));
-                document.getElementById('klineStatus').innerText = `${now.getHours()}:${now.getMinutes()} 5M 快照對齊`;
+                document.getElementById('klineStatus').innerText = `${now.getHours()}:${now.getMinutes()} 5M對齊`;
             }
 
             tickers.forEach(t => {
-                const s = t.symbol; if (!s.endsWith('USDT')) return;
-                const price = parseFloat(t.lastPrice), avg = parseFloat(t.weightedAvgPrice);
+                const s = t.symbol; if (!s.endsWith('USDT') || CONFIG.EXCLUDE.includes(s)) return;
+                const price = parseFloat(t.lastPrice), avgPrice = parseFloat(t.weightedAvgPrice);
                 const high = parseFloat(t.highPrice), low = parseFloat(t.lowPrice);
+                const dec = t.lastPrice.split('.')[1]?.length || 2;
                 
-                // [B-1] M7 趨勢確認邏輯
-                if (!m7History[s]) m7History[s] = [];
-                m7History[s].push(avg); if (m7History[s].length > 10) m7History[s].shift();
-                const m7Slope = m7History[s].length > 1 ? avg > m7History[s][0] : false;
-                
-                if (price > (avg * 1.001) && m7Slope) {
-                    signalCount[s] = (signalCount[s] || 0) + 1;
-                } else { signalCount[s] = 0; }
-                const isAboveM7Filtered = (signalCount[s] >= 3);
-
-                // [C-1/C-2] 建議止損位計算 (僅參考用)
-                const drvScore = Math.min(100, (Math.abs(parseFloat(t.priceChangePercent)) / (parseFloat(t.quoteVolume) / 1e8)) * 18);
-                const m25 = ((high + low) / 2 * 0.7) + (avg * 0.3);
-                const suggestSL = drvScore > 90 ? avg * 0.997 : m25 * 0.992;
-
-                const maSqz = (high - low) / avg;
+                // --- 數據計算 ---
+                const maSqz = (high - low) / avgPrice;
+                const gap = (price - avgPrice) / avgPrice; // 乖離率
                 const v5m = priceSnapshots[s] ? (price - priceSnapshots[s]) / priceSnapshots[s] : 0;
-                const gap = (price - avg) / avg;
+                const drvScore = Math.min(100, (Math.abs(parseFloat(t.priceChangePercent)) / (parseFloat(t.quoteVolume) / 1e8)) * 18);
 
-                // [D-1] 分數與邏輯
+                // --- V11.8 趨勢過濾機制 (核心修正) ---
+                if (!signalCount[s]) signalCount[s] = 0;
+                const isStableTrend = price > (avgPrice * 1.002) && v5m > 0;
+                if (isStableTrend) signalCount[s]++; else signalCount[s] = 0;
+                const isConfirmed = signalCount[s] >= 3; // 必須連續3次掃描達標
+
+                // --- 評分系統 ---
                 let score = 0;
-                if (isAboveM7Filtered) score += 30;
-                if (maSqz <= 0.012) score += (ctx.bonus === "SQZ" ? 45 : 25);
-                if (drvScore >= 90) score += 25;
-                if (v5m >= 0.008) score += (ctx.bonus === "MOM" ? 35 : 20);
-                
-                // [B-2] 乖離過大偵測 (顯示提醒，不扣分)
-                const isOverheated = gap > 0.04; 
+                let meets = { 
+                    sqz: maSqz <= FILTER.SQZ, 
+                    poc: Math.abs(parseFloat(t.priceChangePercent))/100 >= FILTER.POC, 
+                    gap: gap <= FILTER.SLP, // 乖離限制
+                    drv: drvScore >= FILTER.DRV, 
+                    mom: v5m >= FILTER.MOM 
+                };
 
-                stats[s] = { s, price, score, drvScore, maSqz, v5m, isAboveM7: isAboveM7Filtered, suggestSL, isOverheated, gap };
+                if (meets.sqz) score += 20;
+                if (meets.poc) score += 20;
+                if (meets.drv) score += 20;
+                if (meets.mom) score += 20;
+                if (meets.gap) score += 20; else score -= 30; // 乖離過大強制扣分，防止追高反轉
 
-                // 如果分數極高，記錄到日誌
-                if (score >= 100 && (!lastLogTime[s] || Date.now() - lastLogTime[s] > 600000)) {
-                    addLog(s, score, v5m);
-                    lastLogTime[s] = Date.now();
+                // 趨勢加成
+                if (isConfirmed) score += 10;
+
+                // 止損位參考 V11.8 M25 Safe
+                const m25 = ((high + low) / 2 * 0.7) + (avgPrice * 0.3);
+                let slMin = Math.max(m25 * 0.992, low);
+                let tpPot = price * (1 + Math.max(0.015, maSqz * 2));
+
+                stats[s] = { s, price, avgPrice, dec, maSqz, drvScore, score, gap, meets, isConfirmed, v5m, tpPot, slMin };
+
+                if (score >= 85 && isConfirmed) {
+                    if (!lastPushTime[s] || Date.now() - lastPushTime[s] > CONFIG.COOLDOWN) {
+                        lastPushTime[s] = Date.now();
+                        addLog(s, v5m, score);
+                    }
                 }
             });
             render();
-        } catch (e) { console.error("網絡異常或 API 限制"); }
+        } catch (e) { console.error(e); }
         setTimeout(scan, 3000);
     }
 
     function render() {
         const dashboard = document.getElementById('dashboard');
         const list = Object.values(stats).sort((a,b) => (pinned.has(b.s) - pinned.has(a.s)) || (b.score - a.score));
-        dashboard.innerHTML = list.slice(0, 24).map(x => `
-            <div class="card p-3 rounded-lg ${x.score>=100?'gold-card':(x.score>=80?'hunt-card':'')}" onclick="togglePin('${x.s}')">
-                <div class="flex justify-between items-start">
-                    <div class="flex gap-1 flex-wrap">
-                        <span class="tag ${x.isAboveM7?'tag-vld':'bg-zinc-800 text-zinc-600'}">TREND_VLD</span>
-                        ${x.isOverheated ? '<span class="tag tag-alert animate-flash">過熱風險</span>' : ''}
+        dashboard.innerHTML = list.slice(0, 24).map(x => {
+            let cls = x.score >= 90 ? "gold-card animate-hunt" : (x.score >= 75 ? "hunt-card" : "base-card");
+            return `
+                <div class="card p-3 rounded-lg ${cls} ${pinned.has(x.s)?'pinned':''}" onclick="togglePin('${x.s}')">
+                    <div class="flex justify-between items-start mb-1">
+                        <div class="flex gap-1 flex-wrap">
+                            ${x.isConfirmed ? '<span class="tag bg-green-600 text-black">CONFIRMED</span>' : ''}
+                            ${x.gap > FILTER.SLP ? '<span class="tag bg-red-600 text-white animate-pulse">OVEREXTENDED</span>' : ''}
+                        </div>
+                        <span class="text-yellow-500 font-black text-[10px]">SC: ${x.score}</span>
                     </div>
-                    <span class="text-yellow-500 font-black">⚡ SC: ${x.score.toFixed(0)}</span>
-                </div>
-                <div class="flex justify-between items-center my-3">
-                    <h2 class="text-2xl font-black text-white leading-none">${x.s.replace('USDT','')}</h2>
-                    <div class="text-right">
-                        <div class="text-red-500 font-bold">${(x.v5m*100).toFixed(3)}%</div>
-                        <div class="text-zinc-500 text-[9px]">$${x.price.toFixed(4)}</div>
+                    <div class="flex justify-between items-end my-1">
+                        <h2 class="text-2xl font-black text-white leading-none">${x.s.replace('USDT','')}</h2>
+                        <div class="text-right">
+                            <div class="${x.v5m>=0?'text-green-500':'text-red-500'} font-bold">${(x.v5m*100).toFixed(3)}%</div>
+                            <div class="text-[8px] text-zinc-500">$${x.price.toFixed(x.dec)}</div>
+                        </div>
                     </div>
-                </div>
-                <div class="grid grid-cols-2 gap-2 text-[7px] border-t border-zinc-900 pt-2 mb-2">
-                    <div class="text-zinc-400">蓄勢: ${(x.maSqz*100).toFixed(2)}%</div>
-                    <div class="text-blue-400 text-right">真空度: ${x.drvScore.toFixed(0)}</div>
-                </div>
-                <div class="text-[7px] text-zinc-600 italic">
-                    💡 建議守位: $${x.suggestSL.toFixed(4)} (GAP: ${(x.gap*100).toFixed(1)}%)
-                </div>
-            </div>
-        `).join('');
+                    <div class="grid grid-cols-2 gap-1 my-2 text-[7px] font-bold">
+                        <div class="bg-zinc-900 p-1 rounded border border-zinc-800">SQZ: ${(x.maSqz*100).toFixed(2)}%</div>
+                        <div class="bg-zinc-900 p-1 rounded border border-zinc-800 text-blue-400">DRV: ${x.drvScore.toFixed(0)}</div>
+                    </div>
+                    <div class="flex justify-between text-[7px] border-t border-zinc-800 pt-2 font-bold">
+                        <span class="text-red-800 uppercase">SL: $${x.slMin.toFixed(x.dec)}</span>
+                        <span class="text-green-800 uppercase text-right">TP: $${x.tpPot.toFixed(x.dec)}</span>
+                    </div>
+                </div>`;
+        }).join('');
     }
 
-    function addLog(s, score, v5m) {
+    function addLog(s, v5m, score) {
         const container = document.getElementById('logContainer');
         const entry = document.createElement('div');
-        entry.className = `p-2 bg-zinc-900 border-l-2 border-yellow-500 text-[9px]`;
-        entry.innerHTML = `<div><b>💎 ${s.replace('USDT','')} 達成獵殺條件</b></div><div class="flex justify-between text-zinc-500 mt-1"><span>分數: ${score}</span><span>${new Date().toLocaleTimeString()}</span></div>`;
+        entry.className = `p-2 bg-zinc-900 border-l-4 ${score>=90?'border-yellow-500':'border-red-600'} text-[9px] mb-1`;
+        entry.innerHTML = `<div class="flex justify-between"><b>💎 HYBRID ${s.replace('USDT','')}</b><span>SC:${score}</span></div><div class="text-zinc-500 mt-1">趨勢確認進場 | 5M: ${(v5m*100).toFixed(2)}%</div>`;
         container.prepend(entry);
-        if (container.children.length > 30) container.lastChild.remove();
     }
 
-    function toggleSystem() { isRunning = !isRunning; document.getElementById('sysBtn').innerText = isRunning ? "STOP" : "START MONITOR"; if(isRunning) scan(); }
+    function toggleSystem() { isRunning = !isRunning; document.getElementById('sysBtn').innerText = isRunning ? "STOP RADAR" : "START RADAR"; if(isRunning) scan(); }
     function togglePin(s) { pinned.has(s) ? pinned.delete(s) : pinned.add(s); render(); }
+    setupSliders();
 </script>
 </body>
 </html>

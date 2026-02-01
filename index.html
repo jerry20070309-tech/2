@@ -2,7 +2,7 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <title>⚡ SNIPER V11.9.0 | 原始邏輯回歸</title>
+    <title>⚡ SNIPER V11.9.1 | 參數優化 & 搜尋增強</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;800&display=swap');
@@ -24,25 +24,46 @@
 
     <header class="p-4 border-b border-yellow-900 bg-black flex justify-between items-center shrink-0">
         <div class="flex items-center gap-4">
-            <h1 class="text-2xl font-black text-yellow-500 italic">⚡ SNIPER V11.9.0</h1>
+            <h1 class="text-2xl font-black text-yellow-500 italic">⚡ SNIPER V11.9</h1>
+            
+            <div class="flex gap-2 bg-zinc-900 p-1 rounded border border-zinc-700 ml-2">
+                <input id="searchInput" type="text" placeholder="搜尋幣名" class="bg-transparent text-xs px-2 focus:outline-none w-24 text-white uppercase">
+                <button onclick="manualAdd()" class="bg-yellow-600 text-black px-2 py-1 font-bold rounded hover:bg-yellow-500">ADD</button>
+            </div>
+
             <div class="flex gap-2 ml-4">
-                <button onclick="applyPreset('Sat')" class="btn-preset text-blue-400">🌀 週六高勝率</button>
-                <button onclick="applyPreset('Mon')" class="btn-preset text-red-400">🔥 週一獵殺</button>
-                <button onclick="applyPreset('Sniper_Ref')" class="btn-preset text-yellow-400 border-yellow-700">🎯 截圖實戰組</button>
+                <button onclick="applyPreset('Sat')" class="btn-preset text-blue-400 border-blue-900">🌀 週六高勝率</button>
+                <button onclick="applyPreset('Mon')" class="btn-preset text-red-400 border-red-900">🔥 週一獵殺</button>
+                <button onclick="applyPreset('Sniper_Ref')" class="btn-preset text-yellow-400 border-yellow-700">🎯 實戰參數</button>
             </div>
         </div>
         <div class="flex gap-4 text-[9px]">
-            <div id="klineStatus" class="bg-zinc-800 px-3 py-1 rounded text-white italic">等待對齊...</div>
+            <div id="klineStatus" class="bg-zinc-800 px-3 py-1 rounded text-white italic flex items-center">等待對齊...</div>
             <button id="sysBtn" onclick="toggleSystem()" class="bg-blue-600 text-white px-8 py-1 rounded font-black hover:bg-blue-500 text-xs">START RADAR</button>
         </div>
     </header>
 
     <div class="bg-zinc-900/80 p-3 border-b border-yellow-900/30 grid grid-cols-5 gap-4 items-center uppercase font-bold text-zinc-400">
-        <div class="space-y-1"><div class="flex justify-between text-yellow-500 text-[8px]"><span>🌀 SQZ</span><span id="v_sqz">1.2%</span></div><input type="range" id="i_sqz" min="5" max="50" value="12" class="w-full"></div>
-        <div class="space-y-1"><div class="flex justify-between text-green-400 text-[8px]"><span>🎯 POC</span><span id="v_poc">1.1%</span></div><input type="range" id="i_poc" min="1" max="100" value="11" class="w-full"></div>
-        <div class="space-y-1"><div class="flex justify-between text-red-500 text-[8px]"><span>🚨 SLP</span><span id="v_slp">-1.5%</span></div><input type="range" id="i_slp" min="5" max="50" value="15" class="w-full"></div>
-        <div class="space-y-1"><div class="flex justify-between text-blue-400 text-[8px]"><span>🚀 DRV</span><span id="v_drv">90</span></div><input type="range" id="i_drv" min="10" max="150" value="90" class="w-full"></div>
-        <div class="space-y-1"><div class="flex justify-between text-orange-500 text-[8px]"><span>⚡ MOM</span><span id="v_mom">0.8%</span></div><input type="range" id="i_mom" min="1" max="50" value="8" class="w-full"></div>
+        <div class="space-y-1">
+            <div class="flex justify-between text-yellow-500"><span>🌀 SQZ (蓄勢)</span><span id="v_sqz">1.2%</span></div>
+            <input type="range" id="i_sqz" min="5" max="50" value="12" class="w-full">
+        </div>
+        <div class="space-y-1">
+            <div class="flex justify-between text-green-400"><span>🎯 POC (突破)</span><span id="v_poc">1.1%</span></div>
+            <input type="range" id="i_poc" min="1" max="100" value="11" class="w-full">
+        </div>
+        <div class="space-y-1">
+            <div class="flex justify-between text-red-500"><span>🚨 SLP (乖離)</span><span id="v_slp">-1.5%</span></div>
+            <input type="range" id="i_slp" min="5" max="50" value="15" class="w-full">
+        </div>
+        <div class="space-y-1">
+            <div class="flex justify-between text-blue-400"><span>🚀 DRV (真空)</span><span id="v_drv">90</span></div>
+            <input type="range" id="i_drv" min="10" max="150" value="90" class="w-full">
+        </div>
+        <div class="space-y-1">
+            <div class="flex justify-between text-orange-500"><span>⚡ MOM (動量)</span><span id="v_mom">0.8%</span></div>
+            <input type="range" id="i_mom" min="1" max="50" value="8" class="w-full">
+        </div>
     </div>
 
     <div class="flex flex-1 overflow-hidden">
@@ -51,7 +72,7 @@
         </main>
         <aside class="w-72 border-l border-yellow-900 bg-zinc-950 flex flex-col shrink-0">
             <div class="p-3 border-b border-zinc-800 text-red-500 font-bold flex justify-between uppercase">
-                <span>獵殺日誌 (75/100)</span>
+                <span>獵殺日誌 (核心邏輯)</span>
                 <span id="timerDisplay" class="text-zinc-600">LIVE</span>
             </div>
             <div id="logContainer" class="flex-1 overflow-y-auto p-2 space-y-2"></div>
@@ -64,23 +85,35 @@
     let priceSnapshots = {}, lastPushTime = {}, lastSnapMin = -1;
     let FILTER = { SQZ: 0.012, POC: 0.011, SLP: -0.015, DRV: 90, MOM: 0.008 };
 
-    // 高勝率模式切換
+    // 高勝率模式切換 (對齊新滑桿邏輯)
     function applyPreset(day) {
         const presets = {
-            'Sat': { sqz: 8, poc: 5, slp: 5, drv: 110, mom: 5 }, // 週六高勝率核心
-            'Mon': { sqz: 15, poc: 12, slp: 20, drv: 85, mom: 15 }, // 週一獵殺核心
-            'Sniper_Ref': { sqz: 12, poc: 11, slp: 15, drv: 90, mom: 8 } // 截圖實戰組參數
+            'Sat': { sqz: 8, poc: 5, slp: 5, drv: 110, mom: 5 }, 
+            'Mon': { sqz: 15, poc: 12, slp: 20, drv: 85, mom: 15 }, 
+            'Sniper_Ref': { sqz: 12, poc: 11, slp: 15, drv: 90, mom: 8 } 
         };
         const p = presets[day];
-        const keys = ['sqz','poc','slp','drv','mom'];
-        ['i_sqz','i_poc','i_slp','i_drv','i_mom'].forEach((id, i) => {
-            document.getElementById(id).value = p[keys[i]];
+        document.getElementById('i_sqz').value = p.sqz;
+        document.getElementById('i_poc').value = p.poc;
+        document.getElementById('i_slp').value = p.slp;
+        document.getElementById('i_drv').value = p.drv;
+        document.getElementById('i_mom').value = p.mom;
+
+        // 觸發更新
+        ['i_sqz','i_poc','i_slp','i_drv','i_mom'].forEach(id => {
             document.getElementById(id).dispatchEvent(new Event('input'));
         });
     }
 
+    // 參數滑桿連動邏輯 (移植自程式一，適配程式二比例)
     const setupSliders = () => {
-        const binds = [{id:'i_sqz', vid:'v_sqz', key:'SQZ', div:1000, suffix:'%'},{id:'i_poc', vid:'v_poc', key:'POC', div:1000, suffix:'%'},{id:'i_slp', vid:'v_slp', key:'SLP', div:1000, prefix:'-'},{id:'i_drv', vid:'v_drv', key:'DRV', div:1},{id:'i_mom', vid:'v_mom', key:'MOM', div:1000, suffix:'%'}];
+        const binds = [
+            {id:'i_sqz', vid:'v_sqz', key:'SQZ', div:1000, suffix:'%'},
+            {id:'i_poc', vid:'v_poc', key:'POC', div:1000, suffix:'%'},
+            {id:'i_slp', vid:'v_slp', key:'SLP', div:1000, prefix:'-'}, // 程式二使用千分位 SLP
+            {id:'i_drv', vid:'v_drv', key:'DRV', div:1},
+            {id:'i_mom', vid:'v_mom', key:'MOM', div:1000, suffix:'%'}
+        ];
         binds.forEach(b => {
             document.getElementById(b.id).oninput = (e) => {
                 let v = parseFloat(e.target.value);
@@ -91,18 +124,21 @@
         });
     };
 
+    // 核心掃描引擎
     async function scan() {
         if(!isRunning) return;
         try {
-            const [tRes, pRes] = await Promise.all([fetch('https://fapi.binance.com/fapi/v1/ticker/24hr'), fetch('https://fapi.binance.com/fapi/v1/premiumIndex')]);
+            const [tRes, pRes] = await Promise.all([
+                fetch('https://fapi.binance.com/fapi/v1/ticker/24hr'), 
+                fetch('https://fapi.binance.com/fapi/v1/premiumIndex')
+            ]);
             const tickers = await tRes.json();
             const now = new Date();
-            const isSaturday = now.getDay() === 6;
 
             if (now.getMinutes() % 5 === 0 && now.getMinutes() !== lastSnapMin) {
                 lastSnapMin = now.getMinutes();
                 tickers.forEach(t => priceSnapshots[t.symbol] = parseFloat(t.lastPrice));
-                document.getElementById('klineStatus').innerText = `${isSaturday?'週六專屬':'常規'} 5M同步`;
+                document.getElementById('klineStatus').innerText = `${now.getHours()}:${now.getMinutes()} 同步對齊`;
             }
 
             tickers.forEach(t => {
@@ -117,13 +153,20 @@
                 const gap = (price - avgPrice) / avgPrice;
 
                 let score = 0;
-                let meets = { slp: gap <= FILTER.SLP, sqz: maSqz <= FILTER.SQZ, poc: Math.abs(parseFloat(t.priceChangePercent))/100 >= FILTER.POC, drv: drvScore >= FILTER.DRV, mom: v5m >= FILTER.MOM };
+                let meets = { 
+                    slp: gap <= FILTER.SLP, 
+                    sqz: maSqz <= FILTER.SQZ, 
+                    poc: Math.abs(parseFloat(t.priceChangePercent))/100 >= FILTER.POC, 
+                    drv: drvScore >= FILTER.DRV, 
+                    mom: v5m >= FILTER.MOM 
+                };
                 
                 if (meets.sqz) score += 25;
                 if (meets.drv) score += 25;
                 if (meets.poc) score += 25;
                 if (meets.mom) score += 25;
 
+                // 止盈損計算 (程式二原始邏輯)
                 let slMin = Math.min(price * 0.995, Math.max(avgPrice, low));
                 let tpPot = price * (1 + Math.max(0.015, maSqz * 2));
                 let rrRatio = (tpPot - price) / (price - slMin || 0.0001);
@@ -198,6 +241,17 @@
         }).join('');
     }
 
+    // 搜尋功能
+    function manualAdd() {
+        const input = document.getElementById('searchInput');
+        let s = input.value.toUpperCase().trim();
+        if(!s) return;
+        if(!s.endsWith('USDT')) s += 'USDT';
+        pinned.add(s);
+        input.value = '';
+        render();
+    }
+
     function addLog(s, v5m, score) {
         const container = document.getElementById('logContainer');
         const entry = document.createElement('div');
@@ -209,6 +263,8 @@
 
     function toggleSystem() { isRunning = !isRunning; document.getElementById('sysBtn').innerText = isRunning ? "STOP RADAR" : "START RADAR"; if(isRunning) scan(); }
     function togglePin(s) { pinned.has(s) ? pinned.delete(s) : pinned.add(s); render(); }
+    
+    // 初始化
     setupSliders();
 </script>
 </body>

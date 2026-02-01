@@ -2,7 +2,7 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <title>⚡ SNIPER V11.8.4 | 菁英過濾版</title>
+    <title>⚡ SNIPER V11.8.6 | 完全校準回歸版</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;800&display=swap');
@@ -10,30 +10,32 @@
         .card { background: #0a0a0a; border: 1px solid #1a1a1a; transition: 0.3s; position: relative; cursor: pointer; }
         .hunt-card { border: 2px solid #ff0000; background: #2a0000 !important; box-shadow: 0 0 15px #ff0000; }
         .gold-card { border: 2px solid #FFD700; background: #1a1a00 !important; box-shadow: 0 0 20px rgba(255, 215, 0, 0.3); }
-        .warn-card { border: 1px solid #f97316; opacity: 0.8; }
-        .base-card { border: 1px solid #1a1a1a; opacity: 0.5; }
+        .warn-card { border: 1px solid #f97316; opacity: 0.9; }
+        .base-card { border: 1px solid #1a1a1a; opacity: 0.6; }
         .pinned { border: 2px solid #3b82f6 !important; background: #081221 !important; opacity: 1 !important; }
         .tag-gold { background: #FFD700 !important; color: #000 !important; font-weight: 800; }
-        .tag-vlt { background: #8b5cf6 !important; color: #fff !important; }
         .tag-pattern { border: 1px solid #FFD700; color: #FFD700; padding: 0 4px; border-radius: 2px; font-size: 8px; }
         .tsl-box { border-top: 1px dashed #333; margin-top: 4px; padding-top: 4px; display: flex; justify-content: space-between; font-size: 8px; }
         @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.7; } }
         .animate-hunt { animation: blink 0.8s infinite; }
         input[type=range] { accent-color: #FFD700; }
+        .btn-preset { background: #1a1a1a; border: 1px solid #333; padding: 2px 8px; border-radius: 4px; transition: 0.2s; font-size: 9px; }
+        .btn-preset:hover { background: #333; color: #fff; }
     </style>
 </head>
 <body class="h-screen flex flex-col text-[10px]">
 
     <header class="p-4 border-b border-yellow-900 bg-black flex justify-between items-center shrink-0">
         <div class="flex items-center gap-4">
-            <h1 class="text-2xl font-black text-yellow-500 italic">⚡ SNIPER V11.8.4</h1>
+            <h1 class="text-2xl font-black text-yellow-500 italic">⚡ SNIPER V11.8.6</h1>
             <div class="flex gap-2 bg-zinc-900 p-1 rounded border border-zinc-700">
                 <input id="searchInput" type="text" placeholder="搜尋幣名" class="bg-transparent text-xs px-2 focus:outline-none w-24 text-white">
                 <button onclick="manualAdd()" class="bg-yellow-600 text-black px-2 py-1 font-bold rounded">ADD</button>
             </div>
             <div class="flex gap-2 ml-4">
-                <button onclick="applyPreset('Ambush')" class="bg-zinc-800 px-2 py-1 rounded text-blue-400 border border-blue-900">週末埋伏</button>
-                <button onclick="applyPreset('Hunt')" class="bg-zinc-800 px-2 py-1 rounded text-red-400 border border-red-900">強勢獵殺</button>
+                <button onclick="applyPreset('Ambush')" class="btn-preset text-blue-400 border-blue-900">🌀 週末埋伏</button>
+                <button onclick="applyPreset('Hunt')" class="btn-preset text-red-400 border-red-900">🔥 強勢獵殺</button>
+                <button onclick="applyPreset('Spike')" class="btn-preset text-purple-400 border-purple-900">⚡ 暴力異動</button>
             </div>
         </div>
         <div class="flex gap-4 text-[9px]">
@@ -43,26 +45,11 @@
     </header>
 
     <div class="bg-zinc-900/80 p-3 border-b border-yellow-900/30 grid grid-cols-5 gap-4 items-center uppercase font-bold text-zinc-400">
-        <div class="space-y-1">
-            <div class="flex justify-between text-yellow-500"><span>🌀 SQZ</span><span id="v_sqz">1.2%</span></div>
-            <input type="range" id="i_sqz" min="5" max="50" value="12" class="w-full">
-        </div>
-        <div class="space-y-1">
-            <div class="flex justify-between text-green-400"><span>🎯 POC</span><span id="v_poc">1.1%</span></div>
-            <input type="range" id="i_poc" min="1" max="100" value="11" class="w-full">
-        </div>
-        <div class="space-y-1">
-            <div class="flex justify-between text-red-500"><span>🚨 SLP</span><span id="v_slp">-15%</span></div>
-            <input type="range" id="i_slp" min="5" max="50" value="15" class="w-full">
-        </div>
-        <div class="space-y-1">
-            <div class="flex justify-between text-blue-400"><span>🚀 DRV</span><span id="v_drv">90</span></div>
-            <input type="range" id="i_drv" min="10" max="150" value="90" class="w-full">
-        </div>
-        <div class="space-y-1">
-            <div class="flex justify-between text-orange-500"><span>⚡ MOM</span><span id="v_mom">0.8%</span></div>
-            <input type="range" id="i_mom" min="1" max="50" value="8" class="w-full">
-        </div>
+        <div class="space-y-1"><div class="flex justify-between text-yellow-500"><span>🌀 SQZ</span><span id="v_sqz">1.2%</span></div><input type="range" id="i_sqz" min="5" max="50" value="12" class="w-full"></div>
+        <div class="space-y-1"><div class="flex justify-between text-green-400"><span>🎯 POC</span><span id="v_poc">1.1%</span></div><input type="range" id="i_poc" min="1" max="100" value="11" class="w-full"></div>
+        <div class="space-y-1"><div class="flex justify-between text-red-500"><span>🚨 SLP</span><span id="v_slp">-15%</span></div><input type="range" id="i_slp" min="5" max="50" value="15" class="w-full"></div>
+        <div class="space-y-1"><div class="flex justify-between text-blue-400"><span>🚀 DRV</span><span id="v_drv">90</span></div><input type="range" id="i_drv" min="10" max="150" value="90" class="w-full"></div>
+        <div class="space-y-1"><div class="flex justify-between text-orange-500"><span>⚡ MOM</span><span id="v_mom">0.8%</span></div><input type="range" id="i_mom" min="1" max="50" value="8" class="w-full"></div>
     </div>
 
     <div class="flex flex-1 overflow-hidden">
@@ -70,22 +57,28 @@
             <div id="dashboard" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3"></div>
         </main>
         <aside class="w-72 border-l border-yellow-900 bg-zinc-950 flex flex-col shrink-0">
-            <div class="p-3 border-b border-zinc-800 text-red-500 font-bold flex justify-between">
-                <span>強勢日誌 (75+ / 90+)</span>
-                <span id="timerDisplay" class="text-zinc-600">OFFLINE</span>
+            <div class="p-3 border-b border-zinc-800 text-red-500 font-bold flex justify-between uppercase">
+                <span>強勢日誌 (75/90+)</span>
+                <span id="timerDisplay" class="text-zinc-600">LIVE</span>
             </div>
             <div id="logContainer" class="flex-1 overflow-y-auto p-2 space-y-2"></div>
         </aside>
     </div>
 
 <script>
-    const CONFIG = { EXCLUDE: ['BTCUSDT','ETHUSDT','SOLUSDT','XRPUSDT','BNBUSDT'], COOLDOWN: 300000 };
+    const CONFIG = { EXCLUDE: ['BTCUSDT','ETHUSDT','SOLUSDT','XRPUSDT','BNBUSDT'], COOLDOWN: 180000 };
     let stats = {}, pinned = new Set(), isRunning = false;
     let priceSnapshots = {}, lastPushTime = {}, lastSnapMin = -1;
     let FILTER = { SQZ: 0.012, POC: 0.011, SLP: -0.15, DRV: 90, MOM: 0.008 };
 
+    // 恢復並修正 Preset 邏輯
     function applyPreset(type) {
-        const p = type === 'Ambush' ? {sqz:8, poc:5, slp:5, drv:110, mom:5} : {sqz:15, poc:12, slp:20, drv:85, mom:12};
+        const presets = {
+            'Ambush': { sqz: 8,  poc: 5,  slp: 5,  drv: 110, mom: 5 },
+            'Hunt':   { sqz: 15, poc: 12, slp: 20, drv: 85,  mom: 12 },
+            'Spike':  { sqz: 25, poc: 20, slp: 35, drv: 60,  mom: 25 }
+        };
+        const p = presets[type];
         ['i_sqz','i_poc','i_slp','i_drv','i_mom'].forEach((id, i) => {
             const keys = ['sqz','poc','slp','drv','mom'];
             document.getElementById(id).value = p[keys[i]];
@@ -126,32 +119,33 @@
                 const dec = t.lastPrice.split('.')[1]?.length || 2;
                 
                 const maSqz = (high - low) / avgPrice;
-                const drvScore = Math.min(100, (Math.abs(parseFloat(t.priceChangePercent)) / (parseFloat(t.quoteVolume) / 1e8)) * 15);
+                const drvScore = Math.min(100, (Math.abs(parseFloat(t.priceChangePercent)) / (parseFloat(t.quoteVolume) / 1e8)) * 18);
                 const v5m = priceSnapshots[s] ? (price - priceSnapshots[s]) / priceSnapshots[s] : 0;
 
-                // --- [SL-MIN] 極限止損邏輯 ---
-                let slMin = Math.min(price * 0.996, Math.max(avgPrice, low));
+                // 核心評分邏輯 (校準回歸版)
+                let score = 0;
+                if (maSqz <= FILTER.SQZ) score += 25;
+                if (drvScore >= FILTER.DRV) score += 35;
+                if (Math.abs(parseFloat(t.priceChangePercent)) / 100 >= FILTER.POC) score += 20;
+                if (v5m >= 0.003) score += 20;
+
+                // 修正 SL/TP 位元
+                let slMin = Math.min(price * 0.995, Math.max(avgPrice, low));
                 let tpPot = price * (1 + Math.max(0.015, maSqz * 2));
                 let rrRatio = (tpPot - price) / (price - slMin || 0.0001);
 
-                let score = 0;
-                if (maSqz <= FILTER.SQZ) score += 30;
-                if (drvScore >= FILTER.DRV) score += 30;
-                if (Math.abs(parseFloat(t.priceChangePercent)) / 100 >= FILTER.POC) score += 20;
-                if (v5m > 0.005) score += 20;
-
                 let patterns = [];
-                if (maSqz < 0.006) patterns.push("🌀彈簧");
-                if (drvScore > 95) patterns.push("🚀真空");
-                if (rrRatio > 3) patterns.push("💎高風暴");
+                if (maSqz < 0.007) patterns.push("🌀SQZ");
+                if (drvScore > 90) patterns.push("🚀DRV");
+                if (rrRatio > 3) patterns.push("💎RR");
 
-                stats[s] = { s, price, dec, maSqz, drvScore, score, patterns, tpPot, slMin, rrRatio, vwapGap: (price-avgPrice)/avgPrice, v5m, fund: parseFloat(premiumMap[s]?.lastFundingRate || 0) };
+                stats[s] = { s, price, dec, maSqz, drvScore, score, patterns, tpPot, slMin, rrRatio, v5m, fund: parseFloat(premiumMap[s]?.lastFundingRate || 0) };
 
-                // --- 菁英日誌過濾：只收 75/90 分 ---
+                // 菁英紀錄門檻
                 if (score >= 75) {
                     if (!lastPushTime[s] || Date.now() - lastPushTime[s] > CONFIG.COOLDOWN) {
                         lastPushTime[s] = Date.now();
-                        addLog(s, v5m, score, (score >= 90 || rrRatio > 4) ? 3 : 1);
+                        addLog(s, v5m, score, score >= 90 ? 3 : 1);
                     }
                 }
             });
@@ -169,7 +163,7 @@
                 <div class="card p-3 rounded-lg ${cls} ${pinned.has(x.s)?'pinned':''}" onclick="togglePin('${x.s}')">
                     <div class="flex justify-between items-start">
                         <div class="flex gap-1 flex-wrap max-w-[75%]">
-                            <span class="px-1 rounded bg-zinc-800 text-[7px]">RR:${x.rrRatio.toFixed(1)}</span>
+                            <span class="px-1 rounded bg-zinc-800 text-[7px] text-zinc-300">RR:${x.rrRatio.toFixed(1)}</span>
                             ${x.patterns.map(p => `<span class="tag-pattern">${p}</span>`).join('')}
                         </div>
                         <span class="font-black ${x.score>=75?'text-red-500':'text-zinc-500'}">S:${x.score.toFixed(0)}</span>
@@ -177,7 +171,7 @@
                     <div class="flex justify-between items-end my-2">
                         <h2 class="text-xl font-black text-white">${x.s.replace('USDT','')}</h2>
                         <div class="text-right">
-                            <div class="text-[9px] text-zinc-400">$${x.price.toFixed(x.dec)}</div>
+                            <div class="text-[9px] text-zinc-400 font-bold">$${x.price.toFixed(x.dec)}</div>
                             <div class="text-[7px] ${x.v5m>=0?'text-green-500':'text-red-500'}">5M:${(x.v5m*100).toFixed(2)}%</div>
                         </div>
                     </div>
@@ -186,8 +180,8 @@
                         <div class="bg-black/50 p-1 border border-zinc-800 text-right text-blue-400">DRV:${x.drvScore.toFixed(0)}</div>
                     </div>
                     <div class="tsl-box">
-                        <span class="text-red-500">SL:$${x.slMin.toFixed(x.dec)}</span>
-                        <span class="text-green-500">TP:$${x.tpPot.toFixed(x.dec)}</span>
+                        <span class="text-red-500 font-bold">SL:$${x.slMin.toFixed(x.dec)}</span>
+                        <span class="text-green-500 font-bold">TP:$${x.tpPot.toFixed(x.dec)}</span>
                     </div>
                 </div>`;
         }).join('');
@@ -196,17 +190,18 @@
     function addLog(s, v5m, score, lvl) {
         const container = document.getElementById('logContainer');
         const existing = Array.from(container.children).find(el => el.dataset.coin === s);
-        if (existing && Math.abs(score - parseFloat(existing.dataset.score)) < 5) return;
+        // 如果分數沒變動大於 3，不重複洗版
+        if (existing && Math.abs(score - parseFloat(existing.dataset.score)) < 3) return;
 
         const entry = document.createElement('div');
         entry.dataset.coin = s; entry.dataset.score = score;
         const isGold = lvl === 3;
-        entry.className = `p-2 ${isGold?'bg-yellow-900/20':'bg-zinc-900'} border-l-4 ${isGold?'border-yellow-500':'border-red-600'} text-[9px] mb-1`;
+        entry.className = `p-2 ${isGold?'bg-yellow-900/30':'bg-zinc-900'} border-l-4 ${isGold?'border-yellow-500':'border-red-600'} text-[9px] mb-1 animate-pulse`;
         entry.innerHTML = `
-            <div class="flex justify-between"><b>${isGold?'💎GOLD':'🔥HUNT'} ${s.replace('USDT','')}</b><span class="bg-black px-1">SC:${score.toFixed(0)}</span></div>
-            <div class="flex justify-between text-zinc-500 mt-1"><span>M5:${(v5m*100).toFixed(2)}%</span><span>${new Date().toLocaleTimeString()}</span></div>`;
+            <div class="flex justify-between"><b>${isGold?'💎GOLD':'🔥HUNT'} ${s.replace('USDT','')}</b><span class="bg-black px-1 border border-zinc-700">SC:${score.toFixed(0)}</span></div>
+            <div class="flex justify-between text-zinc-400 mt-1"><span>M5:${(v5m*100).toFixed(2)}%</span><span>${new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit',second:'2-digit'})}</span></div>`;
         container.prepend(entry);
-        if (container.children.length > 40) container.lastChild.remove();
+        if (container.children.length > 50) container.lastChild.remove();
     }
 
     function toggleSystem() { isRunning = !isRunning; document.getElementById('sysBtn').innerText = isRunning ? "STOP RADAR" : "START RADAR"; if(isRunning) scan(); }

@@ -28,6 +28,7 @@
             <div class="flex gap-2 ml-4">
                 <button onclick="applyPreset('Sat')" class="btn-preset text-blue-400">🌀 週六高勝率</button>
                 <button onclick="applyPreset('Mon')" class="btn-preset text-red-400">🔥 週一獵殺</button>
+                <button onclick="applyPreset('Sniper_Ref')" class="btn-preset text-yellow-400 border-yellow-700">🎯 截圖實戰組</button>
             </div>
         </div>
         <div class="flex gap-4 text-[9px]">
@@ -67,11 +68,12 @@
     function applyPreset(day) {
         const presets = {
             'Sat': { sqz: 8, poc: 5, slp: 5, drv: 110, mom: 5 }, // 週六高勝率核心
-            'Mon': { sqz: 15, poc: 12, slp: 20, drv: 85, mom: 15 } // 週一獵殺核心
+            'Mon': { sqz: 15, poc: 12, slp: 20, drv: 85, mom: 15 }, // 週一獵殺核心
+            'Sniper_Ref': { sqz: 12, poc: 11, slp: 15, drv: 90, mom: 8 } // 截圖實戰組參數
         };
         const p = presets[day];
+        const keys = ['sqz','poc','slp','drv','mom'];
         ['i_sqz','i_poc','i_slp','i_drv','i_mom'].forEach((id, i) => {
-            const keys = ['sqz','poc','slp','drv','mom'];
             document.getElementById(id).value = p[keys[i]];
             document.getElementById(id).dispatchEvent(new Event('input'));
         });
@@ -114,7 +116,6 @@
                 const v5m = priceSnapshots[s] ? (price - priceSnapshots[s]) / priceSnapshots[s] : 0;
                 const gap = (price - avgPrice) / avgPrice;
 
-                // 原始判定法：每一項 25 分
                 let score = 0;
                 let meets = { slp: gap <= FILTER.SLP, sqz: maSqz <= FILTER.SQZ, poc: Math.abs(parseFloat(t.priceChangePercent))/100 >= FILTER.POC, drv: drvScore >= FILTER.DRV, mom: v5m >= FILTER.MOM };
                 

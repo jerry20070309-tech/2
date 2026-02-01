@@ -1,103 +1,122 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <title>⚡ SNIPER V11.9.0 | 原始邏輯回歸</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;800&display=swap');
+        body { background: #050505; color: #FFD700; font-family: 'JetBrains Mono', monospace; overflow: hidden; }
+        .card { background: #0a0a0a; border: 1px solid #1a1a1a; transition: 0.3s; position: relative; cursor: pointer; }
+        .hunt-card { border: 2px solid #ff0000; background: #1a0000 !important; box-shadow: 0 0 15px rgba(255, 0, 0, 0.2); }
+        .gold-card { border: 2px solid #FFD700; background: #1a1a00 !important; box-shadow: 0 0 20px rgba(255, 215, 0, 0.2); }
+        .base-card { border: 1px solid #1a1a1a; opacity: 0.6; }
+        .pinned { border: 2px solid #3b82f6 !important; background: #081221 !important; opacity: 1 !important; }
+        .tsl-box { border-top: 1px dashed #333; margin-top: 4px; padding-top: 4px; display: flex; justify-content: space-between; font-size: 7px; }
+        @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.7; } }
+        .animate-hunt { animation: blink 0.8s infinite; }
+        input[type=range] { accent-color: #FFD700; }
+        .btn-preset { background: #111; border: 1px solid #333; padding: 2px 8px; border-radius: 4px; font-size: 9px; transition: 0.2s; }
+        .btn-preset:hover { border-color: #FFD700; color: #fff; }
+    </style>
+</head>
+<body class="h-screen flex flex-col text-[10px]">
+
+    <header class="p-4 border-b border-yellow-900 bg-black flex justify-between items-center shrink-0">
+        <div class="flex items-center gap-4">
+            <h1 class="text-2xl font-black text-yellow-500 italic">⚡ SNIPER V11.9.0</h1>
+            <div class="flex gap-2 ml-4">
+                <button onclick="applyPreset('Sat')" class="btn-preset text-blue-400">🌀 週六高勝率</button>
+                <button onclick="applyPreset('Mon')" class="btn-preset text-red-400">🔥 週一獵殺</button>
+            </div>
+        </div>
+        <div class="flex gap-4 text-[9px]">
+            <div id="klineStatus" class="bg-zinc-800 px-3 py-1 rounded text-white italic">等待對齊...</div>
+            <button id="sysBtn" onclick="toggleSystem()" class="bg-blue-600 text-white px-8 py-1 rounded font-black hover:bg-blue-500 text-xs">START RADAR</button>
+        </div>
+    </header>
+
+    <div class="bg-zinc-900/80 p-3 border-b border-yellow-900/30 grid grid-cols-5 gap-4 items-center uppercase font-bold text-zinc-400">
+        <div class="space-y-1"><div class="flex justify-between text-yellow-500 text-[8px]"><span>🌀 SQZ</span><span id="v_sqz">1.2%</span></div><input type="range" id="i_sqz" min="5" max="50" value="12" class="w-full"></div>
+        <div class="space-y-1"><div class="flex justify-between text-green-400 text-[8px]"><span>🎯 POC</span><span id="v_poc">1.1%</span></div><input type="range" id="i_poc" min="1" max="100" value="11" class="w-full"></div>
+        <div class="space-y-1"><div class="flex justify-between text-red-500 text-[8px]"><span>🚨 SLP</span><span id="v_slp">-1.5%</span></div><input type="range" id="i_slp" min="5" max="50" value="15" class="w-full"></div>
+        <div class="space-y-1"><div class="flex justify-between text-blue-400 text-[8px]"><span>🚀 DRV</span><span id="v_drv">90</span></div><input type="range" id="i_drv" min="10" max="150" value="90" class="w-full"></div>
+        <div class="space-y-1"><div class="flex justify-between text-orange-500 text-[8px]"><span>⚡ MOM</span><span id="v_mom">0.8%</span></div><input type="range" id="i_mom" min="1" max="50" value="8" class="w-full"></div>
+    </div>
+
+    <div class="flex flex-1 overflow-hidden">
+        <main class="flex-1 p-3 overflow-y-auto bg-black">
+            <div id="dashboard" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3"></div>
+        </main>
+        <aside class="w-72 border-l border-yellow-900 bg-zinc-950 flex flex-col shrink-0">
+            <div class="p-3 border-b border-zinc-800 text-red-500 font-bold flex justify-between uppercase">
+                <span>獵殺日誌 (75/100)</span>
+                <span id="timerDisplay" class="text-zinc-600">LIVE</span>
+            </div>
+            <div id="logContainer" class="flex-1 overflow-y-auto p-2 space-y-2"></div>
+        </aside>
+    </div>
+
 <script>
-    // [代號: CFG-VAR] 保留原始配置
     const CONFIG = { EXCLUDE: ['BTCUSDT','ETHUSDT'], COOLDOWN: 180000 };
     let stats = {}, pinned = new Set(), isRunning = false;
     let priceSnapshots = {}, lastPushTime = {}, lastSnapMin = -1;
-    
-    // 初始化為你截圖中的專屬參數 [代號: FILTER-PARAM]
-    let FILTER = { SQZ: 0.025, POC: 0.02, SLP: -0.035, DRV: 60, MOM: 0.025 };
-    
-    // [核心] WebSocket 資源池 - [代號: WSS-ENGINE]
-    let tradeCounter = {}, activeWS = new Map();
+    let FILTER = { SQZ: 0.012, POC: 0.011, SLP: -0.015, DRV: 90, MOM: 0.008 };
 
-    function initTradeWS(symbol) {
-        if (activeWS.has(symbol)) return;
-        try {
-            // 指向幣安期貨 aggTrade 流
-            const ws = new WebSocket(`wss://fapi.binance.com/ws/${symbol.toLowerCase()}@aggTrade`);
-            ws.onmessage = (e) => {
-                const data = JSON.parse(e.data);
-                // 底層計數邏輯：收到一筆 aggTrade 封包就 +1
-                tradeCounter[symbol] = (tradeCounter[symbol] || 0) + 1;
-            };
-            ws.onclose = () => activeWS.delete(symbol);
-            ws.onerror = () => { activeWS.delete(symbol); ws.close(); };
-            activeWS.set(symbol, ws);
-        } catch(e) { console.error(`WS Error: ${symbol}`); }
-    }
-
-    // [代號: PRESET-CTRL] 快捷鍵完全對齊你的需求
+    // 高勝率模式切換
     function applyPreset(day) {
         const presets = {
-            'Sat': { sqz: 8, poc: 5, slp: 5, drv: 110, mom: 5 }, 
-            'Mon': { sqz: 15, poc: 12, slp: 20, drv: 85, mom: 15 },
-            'Special': { sqz: 25, poc: 20, slp: 35, drv: 60, mom: 25 } // 圖片參數: 2.5, 2.0, -3.5, 60, 2.5
+            'Sat': { sqz: 8, poc: 5, slp: 5, drv: 110, mom: 5 }, // 週六高勝率核心
+            'Mon': { sqz: 15, poc: 12, slp: 20, drv: 85, mom: 15 } // 週一獵殺核心
         };
         const p = presets[day];
-        const keys = ['sqz','poc','slp','drv','mom'];
         ['i_sqz','i_poc','i_slp','i_drv','i_mom'].forEach((id, i) => {
-            const el = document.getElementById(id);
-            if (el) {
-                el.value = p[keys[i]];
-                el.dispatchEvent(new Event('input'));
-            }
+            const keys = ['sqz','poc','slp','drv','mom'];
+            document.getElementById(id).value = p[keys[i]];
+            document.getElementById(id).dispatchEvent(new Event('input'));
         });
     }
 
-    // [代號: DATA-SCAN] 主循環
+    const setupSliders = () => {
+        const binds = [{id:'i_sqz', vid:'v_sqz', key:'SQZ', div:1000, suffix:'%'},{id:'i_poc', vid:'v_poc', key:'POC', div:1000, suffix:'%'},{id:'i_slp', vid:'v_slp', key:'SLP', div:1000, prefix:'-'},{id:'i_drv', vid:'v_drv', key:'DRV', div:1},{id:'i_mom', vid:'v_mom', key:'MOM', div:1000, suffix:'%'}];
+        binds.forEach(b => {
+            document.getElementById(b.id).oninput = (e) => {
+                let v = parseFloat(e.target.value);
+                FILTER[b.key] = (b.key === 'SLP' ? -(v/1000) : v / b.div);
+                document.getElementById(b.vid).innerText = (b.prefix || '') + (b.key === 'DRV' ? v : (v/10).toFixed(1)) + (b.suffix || '');
+                if (isRunning) render();
+            };
+        });
+    };
+
     async function scan() {
         if(!isRunning) return;
         try {
-            const [tRes, pRes] = await Promise.all([
-                fetch('https://fapi.binance.com/fapi/v1/ticker/24hr'), 
-                fetch('https://fapi.binance.com/fapi/v1/premiumIndex')
-            ]);
+            const [tRes, pRes] = await Promise.all([fetch('https://fapi.binance.com/fapi/v1/ticker/24hr'), fetch('https://fapi.binance.com/fapi/v1/premiumIndex')]);
             const tickers = await tRes.json();
             const now = new Date();
+            const isSaturday = now.getDay() === 6;
 
-            // 5M 同步邏輯 (保持原樣)
             if (now.getMinutes() % 5 === 0 && now.getMinutes() !== lastSnapMin) {
                 lastSnapMin = now.getMinutes();
                 tickers.forEach(t => priceSnapshots[t.symbol] = parseFloat(t.lastPrice));
+                document.getElementById('klineStatus').innerText = `${isSaturday?'週六專屬':'常規'} 5M同步`;
             }
-
-            // [代號: TOP-AUTO] 找出前 24 名強勢幣自動連線 WSS
-            const topCandidates = tickers
-                .filter(t => t.symbol.endsWith('USDT') && !CONFIG.EXCLUDE.includes(t.symbol))
-                .sort((a, b) => Math.abs(parseFloat(b.priceChangePercent)) - Math.abs(parseFloat(a.priceChangePercent)))
-                .slice(0, 24)
-                .map(x => x.symbol);
 
             tickers.forEach(t => {
                 const s = t.symbol; if (!s.endsWith('USDT') || CONFIG.EXCLUDE.includes(s)) return;
-                
-                // 自動啟動 WebSocket 監聽 (前 24 名或 Pin 住的)
-                if (topCandidates.includes(s) || pinned.has(s)) {
-                    initTradeWS(s);
-                }
-
                 const price = parseFloat(t.lastPrice), avgPrice = parseFloat(t.weightedAvgPrice);
                 const high = parseFloat(t.highPrice), low = parseFloat(t.lowPrice);
                 const dec = t.lastPrice.split('.')[1]?.length || 2;
                 
-                // [代號: TC-READER] 讀取並重置計數器
-                const tc3s = tradeCounter[s] || 0; 
-                tradeCounter[s] = 0; 
-
                 const maSqz = (high - low) / avgPrice;
                 const drvScore = Math.min(100, (Math.abs(parseFloat(t.priceChangePercent)) / (parseFloat(t.quoteVolume) / 1e8)) * 18);
                 const v5m = priceSnapshots[s] ? (price - priceSnapshots[s]) / priceSnapshots[s] : 0;
                 const gap = (price - avgPrice) / avgPrice;
 
+                // 原始判定法：每一項 25 分
                 let score = 0;
-                // [代號: SCORE-SYS] 判定邏輯回歸
-                let meets = { 
-                    slp: gap <= FILTER.SLP, 
-                    sqz: maSqz <= FILTER.SQZ, 
-                    poc: Math.abs(parseFloat(t.priceChangePercent))/100 >= FILTER.POC, 
-                    drv: drvScore >= FILTER.DRV, 
-                    mom: v5m >= FILTER.MOM 
-                };
+                let meets = { slp: gap <= FILTER.SLP, sqz: maSqz <= FILTER.SQZ, poc: Math.abs(parseFloat(t.priceChangePercent))/100 >= FILTER.POC, drv: drvScore >= FILTER.DRV, mom: v5m >= FILTER.MOM };
                 
                 if (meets.sqz) score += 25;
                 if (meets.drv) score += 25;
@@ -106,18 +125,90 @@
 
                 let slMin = Math.min(price * 0.995, Math.max(avgPrice, low));
                 let tpPot = price * (1 + Math.max(0.015, maSqz * 2));
+                let rrRatio = (tpPot - price) / (price - slMin || 0.0001);
 
-                // 更新數據池
-                stats[s] = { s, price, dec, maSqz, drvScore, score, gap, meets, tc: tc3s, v5m, tpPot, slMin, rrRatio: (tpPot - price) / (price - slMin || 0.0001) };
+                stats[s] = { s, price, avgPrice, dec, maSqz, drvScore, score, gap, meets, priceChangePercent: parseFloat(t.priceChangePercent), tpPot, slMin, rrRatio, v5m };
 
-                // 日誌推送
-                if (score >= 75 && (!lastPushTime[s] || Date.now() - lastPushTime[s] > CONFIG.COOLDOWN)) {
-                    lastPushTime[s] = Date.now();
-                    if (typeof addLog === 'function') addLog(s, v5m, score);
+                if (score >= 75) {
+                    if (!lastPushTime[s] || Date.now() - lastPushTime[s] > CONFIG.COOLDOWN) {
+                        lastPushTime[s] = Date.now();
+                        addLog(s, v5m, score);
+                    }
                 }
             });
-            render(); // 呼叫你的原始 render 函數
-        } catch (e) { console.error("Scan Error:", e); }
+            render();
+        } catch (e) { console.error(e); }
         setTimeout(scan, 3000);
     }
+
+    function render() {
+        const dashboard = document.getElementById('dashboard');
+        const list = Object.values(stats).sort((a,b) => (pinned.has(b.s) - pinned.has(a.s)) || (b.score - a.score));
+        dashboard.innerHTML = list.slice(0, 24).map(x => {
+            let cls = x.score >= 100 ? "gold-card animate-hunt" : (x.score >= 75 ? "hunt-card animate-hunt" : "base-card");
+            const isTight = x.maSqz < 0.007;
+
+            return `
+                <div class="card p-3 rounded-lg ${cls} ${pinned.has(x.s)?'pinned':''}" onclick="togglePin('${x.s}')">
+                    <div class="flex justify-between items-start mb-1">
+                        <div class="flex gap-1">
+                            <span class="bg-zinc-800 text-yellow-500 px-1 rounded text-[7px] font-bold border border-zinc-700">RR:${x.rrRatio.toFixed(1)}</span>
+                            ${x.meets.drv ? '<span class="bg-yellow-500 text-black px-1 rounded text-[7px] font-black border border-yellow-400">🚀 真空噴發</span>' : ''}
+                        </div>
+                        <div class="text-right"><span class="text-yellow-500 font-black text-[10px]">SCORE: ${x.score}</span></div>
+                    </div>
+
+                    <div class="flex justify-between items-center my-1">
+                        <div>
+                            <h2 class="text-2xl font-black text-white leading-none tracking-tighter">${x.s.replace('USDT','')}</h2>
+                            <div class="text-[7px] text-zinc-600 mt-1 uppercase italic">GAP: ${(x.gap*100).toFixed(2)}%</div>
+                        </div>
+                        <div class="text-right">
+                            <div class="text-[10px] text-red-600 font-black">${(x.v5m*100).toFixed(4)}%</div>
+                            <div class="text-[8px] text-zinc-500 font-bold">$${x.price.toFixed(x.dec)}</div>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-2 my-2">
+                        <div class="bg-zinc-900/80 p-1 border border-zinc-800 rounded">
+                            <span class="text-zinc-600 text-[6px] block uppercase">SQZ:</span>
+                            <span class="text-zinc-300 text-[9px] font-bold">${(x.maSqz*100).toFixed(2)}%</span>
+                        </div>
+                        <div class="bg-zinc-900/80 p-1 border border-zinc-800 rounded text-right">
+                            <span class="text-zinc-600 text-[6px] block uppercase text-blue-400">DRV:</span>
+                            <span class="text-blue-400 text-[9px] font-bold">${x.drvScore.toFixed(0)}</span>
+                        </div>
+                    </div>
+
+                    <div class="flex justify-between items-center mb-1 h-4">
+                        <div class="flex gap-2 text-[8px] font-black tracking-tighter">
+                            <span class="${x.meets.slp ? 'text-red-500' : 'text-zinc-800'}">SLP</span>
+                            <span class="${x.meets.sqz ? 'text-yellow-500' : 'text-zinc-800'}">SQZ</span>
+                            <span class="${x.meets.poc ? 'text-green-500' : 'text-zinc-800'}">POC</span>
+                        </div>
+                        ${isTight ? '<span class="bg-red-700 text-white px-1 rounded text-[7px] font-bold animate-pulse">M7_TIGHT</span>' : ''}
+                    </div>
+
+                    <div class="tsl-box border-t border-zinc-800/50 pt-1 flex justify-between text-[7px] font-bold">
+                        <span class="text-red-900 uppercase">SL_TRAIL: $${x.slMin.toFixed(x.dec)}</span>
+                        <span class="text-green-900 text-right uppercase">TP_TRAIL: $${x.tpPot.toFixed(x.dec)}</span>
+                    </div>
+                </div>`;
+        }).join('');
+    }
+
+    function addLog(s, v5m, score) {
+        const container = document.getElementById('logContainer');
+        const entry = document.createElement('div');
+        entry.className = `p-2 ${score>=100?'bg-yellow-900/30':'bg-zinc-900'} border-l-4 ${score>=100?'border-yellow-500':'border-red-600'} text-[9px] mb-1`;
+        entry.innerHTML = `<div class="flex justify-between"><b>${score>=100?'💎GOLD':'🔥HUNT'} ${s.replace('USDT','')}</b><span class="bg-black px-1 border border-zinc-700">SC:${score}</span></div><div class="flex justify-between text-zinc-400 mt-1"><span>M5:${(v5m*100).toFixed(2)}%</span><span>${new Date().toLocaleTimeString()}</span></div>`;
+        container.prepend(entry);
+        if (container.children.length > 50) container.lastChild.remove();
+    }
+
+    function toggleSystem() { isRunning = !isRunning; document.getElementById('sysBtn').innerText = isRunning ? "STOP RADAR" : "START RADAR"; if(isRunning) scan(); }
+    function togglePin(s) { pinned.has(s) ? pinned.delete(s) : pinned.add(s); render(); }
+    setupSliders();
 </script>
+</body>
+</html>

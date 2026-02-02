@@ -2,7 +2,7 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <title>⚡ SNIPER V11.8.1 | RISK CONTROL MODE</title>
+    <title>⚡ SNIPER V11.8.1 | FULL RISK CONTROL</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;800&display=swap');
@@ -24,27 +24,31 @@
         @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.8; } }
         input[type=range] { accent-color: #FFD700; }
         .btn-preset { background: #1a1a1a; border: 1px solid #333; padding: 2px 8px; border-radius: 4px; transition: 0.2s; }
-        /* 新增輸入框樣式 */
-        .calc-input { background: #111; border: 1px solid #444; color: #FFD700; text-align: center; width: 50px; font-weight: bold; }
+        .calc-input { background: #111; border: 1px solid #444; color: #FFD700; text-align: center; width: 45px; font-weight: bold; font-size: 10px; }
     </style>
 </head>
 <body class="h-screen flex flex-col text-[10px]">
 
     <header class="p-4 border-b border-yellow-900 bg-black flex justify-between items-center shrink-0">
-        <div class="flex items-center gap-4">
+        <div class="flex items-center gap-3">
             <h1 class="text-2xl font-black text-yellow-500 italic">⚡ SNIPER V11.8</h1>
             
-            <div class="flex gap-2 items-center bg-zinc-900 px-3 py-1 rounded border border-zinc-700 ml-4">
-                <span class="text-white scale-90">單筆損($):</span>
+            <div class="flex gap-1 bg-zinc-900 p-1 rounded border border-zinc-700">
+                <input id="searchInput" type="text" placeholder="搜尋幣名" class="bg-transparent text-xs px-2 focus:outline-none w-20 text-white">
+                <button onclick="manualAdd()" class="bg-yellow-600 text-black px-2 py-1 font-bold rounded text-[9px]">ADD</button>
+            </div>
+
+            <div class="flex gap-2 items-center bg-zinc-900 px-3 py-1 rounded border border-zinc-700">
+                <span class="text-zinc-400 scale-90 uppercase">損($)</span>
                 <input id="risk_amt" type="number" value="100" class="calc-input text-red-500" onchange="render()">
-                <span class="text-white scale-90 ml-1">槓桿:</span>
+                <span class="text-zinc-400 scale-90 uppercase ml-1">槓桿</span>
                 <input id="lev_val" type="number" value="20" class="calc-input text-blue-400" onchange="render()">
             </div>
 
-            <div class="flex gap-2 ml-4">
-                <button onclick="applyPreset('Ambush')" class="btn-preset text-blue-400 border-blue-900">週末埋伏</button>
-                <button onclick="applyPreset('Hunt')" class="btn-preset text-red-400 border-red-900">強勢獵殺</button>
-                <button onclick="applyPreset('Spike')" class="btn-preset text-purple-400 border-purple-900">暴力異動</button>
+            <div class="flex gap-1 ml-1">
+                <button onclick="applyPreset('Ambush')" class="btn-preset text-blue-400 border-blue-900 text-[8px]">週末埋伏</button>
+                <button onclick="applyPreset('Hunt')" class="btn-preset text-red-400 border-red-900 text-[8px]">強勢獵殺</button>
+                <button onclick="applyPreset('Spike')" class="btn-preset text-purple-400 border-purple-900 text-[8px]">暴力異動</button>
             </div>
         </div>
         <div class="flex gap-4 text-[9px]">
@@ -79,7 +83,7 @@
         PO_USER: "Gkhqyhobnxzjfwgvaiyp347m1jkhn4",
         PO_TOKEN: "acyoe3sz15x4n91r1349fdcau7x6pw",
         EXCLUDE: ['BTCUSDT','ETHUSDT','SOLUSDT','XRPUSDT','BNBUSDT'],
-        COOLDOWN: 600000
+        COOLDOWN: 600000 
     };
 
     let stats = {}, pinned = new Set(), isRunning = false;
@@ -132,35 +136,69 @@
             const tickers = await tRes.json();
             const premiumMap = Object.fromEntries((await pRes.json()).map(p => [p.symbol, p]));
 
+            const now = new Date();
+            if (now.getMinutes() % 5 === 0 && now.getMinutes() !== lastSnapMin) {
+                lastSnapMin = now.getMinutes();
+                tickers.forEach(t => { priceSnapshots[t.symbol] = parseFloat(t.lastPrice); });
+                document.getElementById('klineStatus').innerText = `${now.getHours()}:${now.getMinutes()} 5M對齊`;
+            }
+
             tickers.forEach(t => {
                 const s = t.symbol;
                 if (!s.endsWith('USDT') || CONFIG.EXCLUDE.includes(s)) return;
 
                 const price = parseFloat(t.lastPrice);
                 const avgPrice = parseFloat(t.weightedAvgPrice); 
-                const mid24h = (parseFloat(t.highPrice) + parseFloat(t.lowPrice)) / 2;
-                const m25 = (mid24h * 0.7) + (avgPrice * 0.3);
                 const vol = parseFloat(t.quoteVolume);
                 const fund = parseFloat(premiumMap[s]?.lastFundingRate || 0);
+                
+                const mid24h = (parseFloat(t.highPrice) + parseFloat(t.lowPrice)) / 2;
+                const m25 = (mid24h * 0.7) + (avgPrice * 0.3);
 
-                // 核心 TSL 邏輯保持不變
+                const oldPrice = priceSnapshots[s] || price;
+                const v5m = (price - oldPrice) / oldPrice;
+                const isVolatile = v5m >= 0.05; 
+
+                if (!m7History[s]) m7History[s] = [];
+                m7History[s].push(avgPrice);
+                if (m7History[s].length > 10) m7History[s].shift();
+
+                const m7Slope = m7History[s].length > 1 ? avgPrice > m7History[s][0] : false;
+                const m7Distance = (price - avgPrice) / avgPrice;
+                const isAboveM7Filtered = (price > avgPrice * 1.002) && m7Slope && (m7Distance < 0.08);
+
+                if (!coinHistory[s]) coinHistory[s] = [];
+                coinHistory[s].push(fund);
+                if (coinHistory[s].length > 30) coinHistory[s].shift();
+
+                const maSqz = (parseFloat(t.highPrice) - parseFloat(t.lowPrice)) / avgPrice;
                 const drvScore = Math.min(100, (Math.abs(parseFloat(t.priceChangePercent)) / (vol / 1e8)) * 15);
+                const slope = coinHistory[s].length >= 30 ? (fund - coinHistory[s][0]) / Math.abs(coinHistory[s][0]) : 0;
+                const isTight = Math.abs(price - avgPrice) / avgPrice < 0.003;
+                const isPocOk = Math.abs(parseFloat(t.priceChangePercent)) / 100 >= FILTER.POC;
+
                 let tsl, tslMode;
                 if (drvScore > 90) { tsl = avgPrice * 0.997; tslMode = "M7_TIGHT"; }
                 else { tsl = m25 * 0.992; tslMode = "M25_SAFE"; }
 
                 const riskPercent = Math.abs((price - tsl) / price);
-                
-                // 存入 stats
-                stats[s] = { 
-                    s, price, fund, drvScore, tsl, tslMode, riskPercent, 
-                    maSqz: (parseFloat(t.highPrice) - parseFloat(t.lowPrice)) / avgPrice,
-                    v5m: (price - (priceSnapshots[s] || price)) / (priceSnapshots[s] || price),
-                    score: drvScore, // 簡化展示用，實際 score 邏輯同原版
-                    patterns: drvScore > 95 ? ["🚀真空噴發"] : [],
-                    isAboveM7: price > avgPrice,
-                    isTight: Math.abs(price - avgPrice) / avgPrice < 0.003
-                };
+                let score = isVolatile ? 50 : 0;
+                if (maSqz < 0.008) {
+                    score += (maSqz <= FILTER.SQZ) ? 25 : 0;
+                    score += (isPocOk) ? 25 : 0;
+                    score += (drvScore >= FILTER.DRV) ? 35 : 0;
+                } else {
+                    score += (slope <= FILTER.SLP) ? 35 : 0;
+                    score += (drvScore >= FILTER.DRV) ? 25 : 0;
+                    score += isAboveM7Filtered ? 15 : 0;
+                }
+
+                stats[s] = { s, price, fund, maSqz, drvScore, slope, isAboveM7: isAboveM7Filtered, isTight, isPocOk, isVolatile, v5m, score, tsl, tslMode, riskPercent, ttp: price * 1.05 };
+
+                if ((score >= 90 || isVolatile) && (!lastPushTime[s] || Date.now() - lastPushTime[s] > CONFIG.COOLDOWN)) {
+                    lastPushTime[s] = Date.now();
+                    addLog(s, v5m, score, isVolatile ? 2 : 1);
+                }
             });
             render();
         } catch (e) { console.error(e); }
@@ -171,58 +209,70 @@
         const dashboard = document.getElementById('dashboard');
         const userRisk = parseFloat(document.getElementById('risk_amt').value) || 0;
         const userLev = parseFloat(document.getElementById('lev_val').value) || 1;
-
         const list = Object.values(stats).sort((a,b) => (pinned.has(b.s) - pinned.has(a.s)) || (b.score - a.score));
         
         dashboard.innerHTML = list.slice(0, 24).map(x => {
-            // 以損定量計算
-            const posValue = userRisk / x.riskPercent; // 總開倉價值 (USDT)
-            const marginNeed = posValue / userLev; // 實際投入保證金 (USDT)
-
+            const posValue = userRisk / x.riskPercent;
+            const marginNeed = posValue / userLev;
             const riskLabel = (x.riskPercent * 100).toFixed(2) + "%";
             const riskClass = x.riskPercent > 0.015 ? "risk-bad" : "risk-good";
             const riskHint = x.riskPercent > 0.015 ? "⚠️ 追高" : "✅ 優質";
 
+            let statusClass = "base-card";
+            if (x.score >= 90 || x.isVolatile) statusClass = "hunt-card";
+            else if (x.score >= 80) statusClass = "warn-card";
+            else if (x.score >= 60) statusClass = "info-card";
+
             return `
-                <div class="card p-3 rounded-lg ${pinned.has(x.s)?'pinned':'base-card'}" onclick="togglePin('${x.s}')">
+                <div class="card p-3 rounded-lg ${statusClass} ${pinned.has(x.s)?'pinned':''}" onclick="togglePin('${x.s}')">
                     <div class="flex justify-between items-start mb-1">
-                        <div class="flex gap-1">
+                        <div class="flex gap-1 flex-wrap max-w-[70%]">
                             <span class="px-1 rounded ${x.isAboveM7 ? 'tag-active' : 'bg-zinc-800 text-zinc-500'}">M7</span>
                             <span class="px-1 rounded ${x.isTight ? 'tag-tight' : 'bg-zinc-800 text-zinc-500'}">TIGHT</span>
+                            <span class="px-1 rounded ${x.isVolatile ? 'tag-vlt' : 'hidden'}">SPIKE</span>
                         </div>
                         <span class="text-xs font-black text-yellow-500">SCORE: ${x.score.toFixed(0)}</span>
                     </div>
 
-                    <div class="flex justify-between items-center">
+                    <div class="flex justify-between items-center mt-1">
                         <h2 class="text-xl font-black text-white">${x.s.replace('USDT','')}</h2>
                         <div class="text-right">
-                            <span class="risk-tag ${riskClass}">${riskHint} ${riskLabel}</span>
+                            <div class="risk-tag ${riskClass} mb-1">${riskHint} ${riskLabel}</div>
                             <div class="text-[9px] text-zinc-500">$${x.price.toFixed(4)}</div>
                         </div>
                     </div>
 
                     <div class="bg-zinc-900 border border-zinc-800 p-2 my-2 rounded">
-                        <div class="flex justify-between text-[7px] text-zinc-500 uppercase">
-                            <span>建議開倉 (名義價值)</span>
-                            <span>需投保證金 (槓桿後)</span>
+                        <div class="flex justify-between text-[6px] text-zinc-500 uppercase">
+                            <span>開倉價值 (SIZE)</span>
+                            <span>預估保證金 (MARGIN)</span>
                         </div>
                         <div class="flex justify-between items-end">
-                            <span class="text-yellow-500 font-bold text-sm">$${posValue.toFixed(0)} <span class="text-[8px]">USDT</span></span>
-                            <span class="text-white font-bold">$${marginNeed.toFixed(1)} <span class="text-[8px]">USDT</span></span>
+                            <span class="text-yellow-500 font-bold text-sm">$${posValue.toFixed(0)}</span>
+                            <span class="text-white font-bold">$${marginNeed.toFixed(1)}</span>
                         </div>
                     </div>
 
                     <div class="tsl-box">
-                        <span>SL_TRAIL: $${x.tsl.toFixed(4)}</span>
-                        <span class="${x.riskPercent > 0.02 ? 'text-red-500' : 'text-zinc-500'}">損: ${riskLabel}</span>
+                        <span>SL: $${x.tsl.toFixed(4)}</span>
+                        <span class="${x.tslMode==='M7_TIGHT'?'text-red-400':'text-blue-400'}">${x.tslMode}</span>
                     </div>
                 </div>
             `;
         }).join('');
     }
 
+    function addLog(s, v5m, score, lvl) {
+        const container = document.getElementById('logContainer');
+        const entry = document.createElement('div');
+        entry.className = `p-2 bg-zinc-900 border-l-4 ${lvl===2?'border-purple-600':'border-red-500'} text-[9px] mb-1`;
+        entry.innerHTML = `<b>${lvl===2?'⚡ SPIKE':'🔥 HUNT'} ${s}</b> 5M:+${(v5m*100).toFixed(2)}% <span class="float-right text-zinc-600">${new Date().toLocaleTimeString()}</span>`;
+        container.prepend(entry);
+    }
+
     function toggleSystem() { isRunning = !isRunning; document.getElementById('sysBtn').innerText = isRunning ? "STOP RADAR" : "START RADAR"; if(isRunning) scan(); }
     function togglePin(s) { pinned.has(s) ? pinned.delete(s) : pinned.add(s); render(); }
+    function manualAdd() { const input = document.getElementById('searchInput'); let s = input.value.toUpperCase().trim(); if(!s) return; if(!s.endsWith('USDT')) s+='USDT'; pinned.add(s); input.value=''; render(); }
     
     setupSliders();
 </script>

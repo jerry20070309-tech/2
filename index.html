@@ -2,14 +2,13 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <title>⚡ SNIPER V12.2 | FULL HYBRID MODE</title>
+    <title>⚡ SNIPER V12.2 | FULL RECOVERY + ENTRY ZONE</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;800&display=swap');
         body { background: #050505; color: #FFD700; font-family: 'JetBrains Mono', monospace; overflow: hidden; }
         .card { background: #0a0a0a; border: 1px solid #1a1a1a; transition: 0.3s; position: relative; cursor: pointer; }
         .hunt-card { border: 2px solid #ff0000; background: #2a0000 !important; box-shadow: 0 0 20px #ff0000; animation: blink 0.8s infinite; }
-        .entry-ready { border: 2px solid #22c55e !important; box-shadow: 0 0 15px rgba(34, 197, 94, 0.4); }
         .warn-card { border: 2px solid #f97316; background: #241205 !important; }
         .info-card { border: 1px solid #3b82f6; background: #081221 !important; }
         .base-card { border: 1px solid #1a1a1a; opacity: 0.6; }
@@ -18,9 +17,11 @@
         .tag-tight { background: #3b82f6 !important; color: #fff !important; }
         .tag-vlt { background: #8b5cf6 !important; color: #fff !important; }
         .tag-pattern { border: 1px solid #FFD700; color: #FFD700; padding: 0 4px; border-radius: 2px; font-size: 8px; }
-        .tsl-box { border-top: 1px dashed #333; margin-top: 4px; padding-top: 4px; display: flex; justify-content: space-between; font-size: 8px; font-weight: 800; }
+        .tsl-box { border-top: 1px dashed #333; margin-top: 4px; padding-top: 4px; display: flex; justify-content: space-between; font-size: 7px; color: #888; }
+        .entry-ready { border: 2px solid #22c55e !important; box-shadow: 0 0 15px rgba(34, 197, 94, 0.4); opacity: 1 !important; }
         @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.8; } }
         input[type=range] { accent-color: #FFD700; }
+        .btn-preset { background: #1a1a1a; border: 1px solid #333; padding: 2px 8px; border-radius: 4px; transition: 0.2s; }
     </style>
 </head>
 <body class="h-screen flex flex-col text-[10px]">
@@ -28,14 +29,19 @@
     <header class="p-4 border-b border-yellow-900 bg-black flex justify-between items-center shrink-0">
         <div class="flex items-center gap-4">
             <h1 class="text-2xl font-black text-yellow-500 italic">⚡ SNIPER V12.2</h1>
-            <div class="flex gap-2">
-                <button onclick="applyPreset('Ambush')" class="bg-zinc-900 border border-zinc-700 px-3 py-1 rounded text-blue-400">週末埋伏</button>
-                <button onclick="applyPreset('Hunt')" class="bg-zinc-900 border border-zinc-700 px-3 py-1 rounded text-red-400">強勢獵殺</button>
+            <div class="flex gap-2 bg-zinc-900 p-1 rounded border border-zinc-700">
+                <input id="searchInput" type="text" placeholder="搜尋幣名" class="bg-transparent text-xs px-2 focus:outline-none w-24 text-white">
+                <button onclick="manualAdd()" class="bg-yellow-600 text-black px-2 py-1 font-bold rounded">ADD</button>
+            </div>
+            <div class="flex gap-2 ml-4">
+                <button onclick="applyPreset('Ambush')" class="btn-preset text-blue-400 border-blue-900">週末埋伏</button>
+                <button onclick="applyPreset('Hunt')" class="btn-preset text-red-400 border-red-900">強勢獵殺</button>
+                <button onclick="applyPreset('Spike')" class="btn-preset text-purple-400 border-purple-900">暴力異動</button>
             </div>
         </div>
         <div class="flex gap-4">
-            <div id="klineStatus" class="bg-zinc-800 px-3 py-1 rounded text-white flex items-center tracking-tighter">等待對齊...</div>
-            <button id="sysBtn" onclick="toggleSystem()" class="bg-blue-600 text-white px-8 py-1 rounded font-black hover:bg-blue-500">START RADAR</button>
+            <div id="klineStatus" class="bg-zinc-800 px-3 py-1 rounded text-white flex items-center">等待對齊...</div>
+            <button id="sysBtn" onclick="toggleSystem()" class="bg-blue-600 text-white px-8 py-1 rounded font-black">START RADAR</button>
         </div>
     </header>
 
@@ -68,7 +74,7 @@
         </main>
         <aside class="w-72 border-l border-yellow-900 bg-zinc-950 flex flex-col shrink-0">
             <div class="p-3 border-b border-zinc-800 text-red-500 font-bold flex justify-between uppercase">
-                <span>戰鬥日誌 (V12 FULL)</span>
+                <span>戰鬥日誌 (FULL RECOVERY)</span>
                 <span id="timerDisplay" class="text-zinc-600">OFFLINE</span>
             </div>
             <div id="logContainer" class="flex-1 overflow-y-auto p-2 space-y-1"></div>
@@ -79,14 +85,14 @@
     const CONFIG = { EXCLUDE: ['BTCUSDT','ETHUSDT','SOLUSDT','XRPUSDT','BNBUSDT'], COOLDOWN: 600000 };
     let stats = {}, pinned = new Set(), isRunning = false;
     let coinHistory = {}, priceSnapshots = {}, lastPushTime = {}, lastSnapMin = -1;
-    let signalCount = {}; 
+    let m7History = {}, signalCount = {}; 
     let FILTER = { SQZ: 0.012, POC: 0.011, SLP: -0.015, DRV: 90, MOM: 0.008 };
 
-    // 還原 Preset 邏輯
     function applyPreset(type) {
         const presets = {
-            'Ambush': { sqz: 8, poc: 5, slp: 10, drv: 110, mom: 5 },
-            'Hunt': { sqz: 15, poc: 12, slp: 15, drv: 85, mom: 12 }
+            'Ambush': { sqz: 8, poc: 5, slp: 5, drv: 110, mom: 5 },
+            'Hunt': { sqz: 15, poc: 12, slp: 20, drv: 85, mom: 12 },
+            'Spike': { sqz: 25, poc: 20, slp: 35, drv: 60, mom: 25 }
         };
         const p = presets[type];
         document.getElementById('i_sqz').value = p.sqz;
@@ -126,7 +132,7 @@
             if (now.getMinutes() % 5 === 0 && now.getMinutes() !== lastSnapMin) {
                 lastSnapMin = now.getMinutes();
                 tickers.forEach(t => priceSnapshots[t.symbol] = parseFloat(t.lastPrice));
-                document.getElementById('klineStatus').innerText = `${now.getHours()}:${now.getMinutes()} 5M對齊`;
+                document.getElementById('klineStatus').innerText = `${now.getHours()}:${now.getMinutes()} 5M同步`;
             }
 
             tickers.forEach(t => {
@@ -134,39 +140,50 @@
                 const price = parseFloat(t.lastPrice), avgPrice = parseFloat(t.weightedAvgPrice);
                 const high = parseFloat(t.highPrice), low = parseFloat(t.lowPrice);
                 
-                // --- 1. 還原 M25 與 趨勢邏輯 ---
+                // --- 還原 V11.8.1 M25 與 均線邏輯 ---
                 const mid24h = (high + low) / 2;
                 const m25 = (mid24h * 0.7) + (avgPrice * 0.3);
                 const v5m = priceSnapshots[s] ? (price - priceSnapshots[s]) / priceSnapshots[s] : 0;
                 
                 if (!signalCount[s]) signalCount[s] = 0;
-                if (price > avgPrice * 1.002 && v5m > 0) signalCount[s]++; else signalCount[s] = 0;
+                if (price > (avgPrice * 1.002) && v5m > 0) signalCount[s]++; else signalCount[s] = 0;
                 const isAboveM7 = signalCount[s] >= 3;
 
-                // --- 2. 還原 模式偵測 (🌀彈簧, 🚀真空, 🔥妖幣) ---
+                // --- 還原 模式偵測 (SQZ, DRV, MOM, SLP) ---
                 const maSqz = (high - low) / avgPrice;
                 const drvScore = Math.min(100, (Math.abs(parseFloat(t.priceChangePercent)) / (parseFloat(t.quoteVolume) / 1e8)) * 15);
+                const isPocOk = Math.abs(parseFloat(t.priceChangePercent)) / 100 >= FILTER.POC;
+                const isTight = Math.abs(price - avgPrice) / avgPrice < 0.003;
+                
                 let patterns = [];
                 if (maSqz < 0.006) patterns.push("🌀彈簧吸籌");
                 if (drvScore > 95) patterns.push("🚀真空噴發");
                 if (v5m >= 0.05 && parseFloat(t.quoteVolume) > 1e7) patterns.push("🔥妖幣放量");
 
-                // --- 3. 注入新版 TP/SL 與 Entry Zone ---
-                const entryMax = price * 0.998;
-                const entryMin = Math.max(avgPrice, price * 0.993);
+                // --- 注入 Entry Zone 與 TP/SL ---
+                const entryMax = price * 0.998, entryMin = Math.max(avgPrice, price * 0.993);
                 const isReady = price <= entryMax && price >= (avgPrice * 0.998);
-                const tp1 = price * 1.015, tp2 = price * (1 + Math.max(0.03, maSqz * 1.5));
-                const sl = Math.min(m25 * 0.992, low * 0.998);
+                
+                let tsl, tslMode;
+                if (drvScore > 90) { tsl = avgPrice * 0.997; tslMode = "M7_TIGHT"; }
+                else { tsl = m25 * 0.992; tslMode = "M25_SAFE"; }
+                const ttp = drvScore > 90 ? price * (1 + (v5m * 2)) : price * 1.05;
 
                 let score = 0;
-                if (isAboveM7) score += 30;
-                if (maSqz <= FILTER.SQZ) score += 20;
-                if (drvScore >= FILTER.DRV) score += 30;
-                if (v5m >= FILTER.MOM) score += 20;
+                if (v5m >= 0.05) score += 50; 
+                if (maSqz < 0.008) {
+                    score += (maSqz <= FILTER.SQZ) ? 25 : 0;
+                    score += (isPocOk) ? 25 : 0;
+                    score += (drvScore >= FILTER.DRV) ? 35 : 0;
+                } else {
+                    score += (v5m >= FILTER.MOM) ? 35 : 0;
+                    score += (drvScore >= FILTER.DRV) ? 25 : 0;
+                    score += (isAboveM7) ? 15 : 0;
+                }
 
-                stats[s] = { s, price, score, maSqz, drvScore, isAboveM7, isReady, entryMin, entryMax, tp1, tp2, sl, 
-                             fund: parseFloat(premiumMap[s]?.lastFundingRate || 0), patterns, 
-                             isTight: Math.abs(price - avgPrice) / avgPrice < 0.003, v5m };
+                stats[s] = { s, price, score, maSqz, drvScore, isAboveM7, isReady, entryMin, entryMax, 
+                             ttp, tsl, tslMode, fund: parseFloat(premiumMap[s]?.lastFundingRate || 0), 
+                             patterns, isTight, isPocOk, v5m };
 
                 if (score >= 90 && (!lastPushTime[s] || Date.now() - lastPushTime[s] > CONFIG.COOLDOWN)) {
                     lastPushTime[s] = Date.now();
@@ -183,7 +200,7 @@
         const list = Object.values(stats).sort((a,b) => (pinned.has(b.s) - pinned.has(a.s)) || (b.score - a.score));
         dashboard.innerHTML = list.slice(0, 24).map(x => {
             let statusClass = "base-card";
-            if (x.score >= 90) statusClass = "hunt-card";
+            if (x.score >= 90 || x.v5m >= 0.05) statusClass = "hunt-card";
             else if (x.score >= 80) statusClass = "warn-card";
             else if (x.score >= 60) statusClass = "info-card";
             if (x.isReady && x.score >= 80) statusClass += " entry-ready";
@@ -196,30 +213,37 @@
                             <span class="px-1 rounded ${x.isTight ? 'tag-tight' : 'bg-zinc-800 text-zinc-500'}">TIGHT</span>
                             ${x.patterns.map(p => `<span class="tag-pattern">${p}</span>`).join('')}
                         </div>
-                        <span class="text-xs font-black text-yellow-500">SC: ${x.score}</span>
+                        <span class="text-xs font-black text-yellow-500">SCORE: ${x.score.toFixed(0)}</span>
                     </div>
-                    <div class="flex justify-between items-end my-1">
-                        <h2 class="text-2xl font-black text-white leading-none">${x.s.replace('USDT','')}</h2>
+                    <div class="flex justify-between items-center mt-1">
+                        <h2 class="text-xl font-black text-white">${x.s.replace('USDT','')}</h2>
                         <div class="text-right">
                             <div class="text-red-500 font-bold">${(x.fund*100).toFixed(4)}%</div>
                             <div class="text-[9px] text-zinc-500">$${x.price.toFixed(4)}</div>
                         </div>
                     </div>
                     
-                    <div class="my-2 p-1.5 bg-black/40 border border-dashed ${x.isReady ? 'border-green-500' : 'border-zinc-800'} rounded text-center">
-                        <div class="text-[9px] font-black ${x.isReady ? 'text-green-500' : 'text-zinc-600'}">
-                            ${x.isReady ? '🎯 READY: '+x.entryMin.toFixed(4) : '⌛ WAIT PULLBACK'}
+                    <div class="my-2 p-1 bg-black/40 border border-dashed ${x.isReady ? 'border-green-500' : 'border-zinc-800'} rounded text-center">
+                        <div class="text-[8px] font-black ${x.isReady ? 'text-green-500 italic' : 'text-zinc-600'}">
+                            ${x.isReady ? '🎯 ENTRY READY: '+x.entryMin.toFixed(4) : '⌛ WAITING FOR PULLBACK'}
                         </div>
                     </div>
 
-                    <div class="grid grid-cols-2 gap-1 mb-2 text-[8px] font-bold">
+                    <div class="grid grid-cols-2 gap-1 mb-2 text-[8px] font-bold text-zinc-400">
                         <div class="bg-black p-1 border border-zinc-800">SQZ: ${(x.maSqz*100).toFixed(2)}%</div>
                         <div class="bg-black p-1 border border-zinc-800 text-right text-blue-400">DRV: ${x.drvScore.toFixed(0)}</div>
                     </div>
 
-                    <div class="tsl-box">
-                        <span class="text-red-800 italic">SL: $${x.sl.toFixed(4)}</span>
-                        <span class="text-green-800 italic">TP2: $${x.tp2.toFixed(4)}</span>
+                    <div class="flex justify-between items-center border-t border-zinc-900 pt-1">
+                        <div class="flex gap-2 text-[8px] font-black uppercase">
+                            <span class="${x.maSqz <= FILTER.SQZ ?'text-green-500':'text-zinc-700'}">SQZ</span>
+                            <span class="${x.isPocOk ? 'text-green-500':'text-zinc-700'}">POC</span>
+                        </div>
+                        <div class="px-1 rounded text-[7px] ${x.tslMode === 'M7_TIGHT' ? 'bg-red-900 text-red-200' : 'bg-zinc-800 text-zinc-400'}">${x.tslMode}</div>
+                    </div>
+                    <div class="tsl-box font-bold">
+                        <span>SL_TRAIL: $${x.tsl.toFixed(4)}</span>
+                        <span class="text-green-700">TP_TRAIL: $${x.ttp.toFixed(4)}</span>
                     </div>
                 </div>`;
         }).join('');
@@ -235,6 +259,7 @@
 
     function toggleSystem() { isRunning = !isRunning; document.getElementById('sysBtn').innerText = isRunning ? "STOP RADAR" : "START RADAR"; if(isRunning) scan(); }
     function togglePin(s) { pinned.has(s) ? pinned.delete(s) : pinned.add(s); render(); }
+    function manualAdd() { const input = document.getElementById('searchInput'); let s = input.value.toUpperCase().trim(); if(!s) return; if(!s.endsWith('USDT')) s+='USDT'; pinned.add(s); input.value=''; render(); }
     setupSliders();
 </script>
 </body>
